@@ -50,7 +50,7 @@ public class User {
     private OffsetDateTime updatedAt;
 
     @Column(name = "is_banned")
-    private boolean isBanned;
+    private Boolean isBanned;
 
     public User() {
     }
@@ -155,11 +155,11 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
-    public boolean isBanned() {
+    public Boolean isBanned() {
         return isBanned;
     }
 
-    public void setBanned(boolean banned) {
+    public void setBanned(Boolean banned) {
         isBanned = banned;
     }
 }

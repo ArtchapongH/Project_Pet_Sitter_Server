@@ -1,5 +1,6 @@
 package com.techup.pet_sitter.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -23,6 +24,7 @@ public class SitterProfile {
     @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
     private UUID userId;
 
+    @JsonIgnore
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "user_id")
@@ -103,6 +105,9 @@ public class SitterProfile {
     @Column(name = "rejection_reason")
     private String rejectionReason;
 
+    @Column(name = "pet_sitter_state", nullable = true)
+    private Integer pet_sitter_state;
+
     public SitterProfile() {
     }
 
@@ -126,6 +131,7 @@ public class SitterProfile {
         this.userId = userId;
     }
 
+    @JsonIgnore
     public User getUser() {
         return user;
     }
@@ -332,5 +338,13 @@ public class SitterProfile {
 
     public void setRejectionReason(String rejectionReason) {
         this.rejectionReason = rejectionReason;
+    }
+
+    public Integer getPet_sitter_state() {
+        return pet_sitter_state;
+    }
+
+    public void setPet_sitter_state(Integer pet_sitter_state) {
+        this.pet_sitter_state = pet_sitter_state;
     }
 }
