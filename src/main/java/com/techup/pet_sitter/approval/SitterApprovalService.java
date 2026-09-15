@@ -140,15 +140,17 @@ public class SitterApprovalService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProfileResponse> listedProfiles() {
+    public List<ListedSitterResponse> listedProfiles() {
         return profiles.findByIsListedTrue().stream()
-                .map(profile -> new ProfileResponse(
+                .map(profile -> new ListedSitterResponse(
                         profile.getUserId(),
-                        profile.getApprovalStatus(),
-                        true,
-                        null,
-                        livePayload(profile),
-                        null
+                        profile.getDisplayName(),
+                        profile.getUser().getAvatarUrl(),
+                        sitterPetTypes.findBySitter_UserId(profile.getUserId()).stream()
+                                .map(link -> link.getPetType().getName()).toList(),
+                        profile.getServices(),
+                        profile.getIntroduction(),
+                        profile.getProvince()
                 ))
                 .toList();
     }

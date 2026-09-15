@@ -57,7 +57,7 @@ public class SitterApprovalController {
     }
 
     @GetMapping("/sitters")
-    List<ProfileResponse> listedSitters() {
+    List<ListedSitterResponse> listedSitters() {
         return approvals.listedProfiles();
     }
 
