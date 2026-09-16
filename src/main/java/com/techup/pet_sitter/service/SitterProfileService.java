@@ -3,6 +3,8 @@ package com.techup.pet_sitter.service;
 import com.techup.pet_sitter.entity.SitterProfile;
 import com.techup.pet_sitter.repository.SitterProfileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,6 +22,83 @@ public class SitterProfileService {
 
     public List<SitterProfile> getAll() {
         return sitterProfileRepository.findAllWithUser();
+    }
+
+    // ==========================================
+    // Search + status filter + pagination (mirrors PostService.getPosts)
+    // ==========================================
+
+    public SitterProfilePageResponse getPaginated(String status, String keyword, Integer page, Integer limit) {
+
+        int safePage = (page == null || page < 1) ? 1 : page;
+
+        int requestedLimit = (limit == null) ? 10 : limit;
+        int safeLimit = Math.max(1, Math.min(100, requestedLimit));
+
+        String safeStatus = (status == null) ? "" : status.trim();
+        String safeKeyword = (keyword == null) ? "" : keyword.trim();
+
+        Pageable pageable = PageRequest.of(safePage - 1, safeLimit);
+
+        List<SitterProfile> sitters = sitterProfileRepository.searchSitterProfiles(safeStatus, safeKeyword, pageable);
+        long totalItems = sitterProfileRepository.countSitterProfiles(safeStatus, safeKeyword);
+        int totalPages = (int) Math.ceil((double) totalItems / safeLimit);
+
+        SitterProfilePageResponse response = new SitterProfilePageResponse();
+        response.setSitters(sitters);
+        response.setCurrentPage(safePage);
+        response.setTotalPages(totalPages);
+        response.setTotalItems(totalItems);
+        response.setLimit(safeLimit);
+        return response;
+    }
+
+    public static class SitterProfilePageResponse {
+        private List<SitterProfile> sitters;
+        private int currentPage;
+        private int totalPages;
+        private long totalItems;
+        private int limit;
+
+        public List<SitterProfile> getSitters() {
+            return sitters;
+        }
+
+        public void setSitters(List<SitterProfile> sitters) {
+            this.sitters = sitters;
+        }
+
+        public int getCurrentPage() {
+            return currentPage;
+        }
+
+        public void setCurrentPage(int currentPage) {
+            this.currentPage = currentPage;
+        }
+
+        public int getTotalPages() {
+            return totalPages;
+        }
+
+        public void setTotalPages(int totalPages) {
+            this.totalPages = totalPages;
+        }
+
+        public long getTotalItems() {
+            return totalItems;
+        }
+
+        public void setTotalItems(long totalItems) {
+            this.totalItems = totalItems;
+        }
+
+        public int getLimit() {
+            return limit;
+        }
+
+        public void setLimit(int limit) {
+            this.limit = limit;
+        }
     }
 
     public SitterProfile getById(UUID id) {

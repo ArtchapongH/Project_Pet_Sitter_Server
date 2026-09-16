@@ -29,8 +29,13 @@ public class SitterProfileController {
     }
 
     @GetMapping
-    public ResponseEntity<List<SitterProfile>> getAll() {
-        return ResponseEntity.ok(sitterProfileService.getAll());
+    public ResponseEntity<SitterProfileService.SitterProfilePageResponse> getAll(
+            @RequestParam(required = false, defaultValue = "") String status,
+            @RequestParam(required = false, defaultValue = "") String keyword,
+            @RequestParam(required = false, defaultValue = "1") Integer page,
+            @RequestParam(required = false, defaultValue = "10") Integer limit
+    ) {
+        return ResponseEntity.ok(sitterProfileService.getPaginated(status, keyword, page, limit));
     }
 
     @GetMapping("/{id}")
