@@ -19,11 +19,11 @@ public class SitterProfileService {
     }
 
     public List<SitterProfile> getAll() {
-        return sitterProfileRepository.findAll();
+        return sitterProfileRepository.findAllWithUser();
     }
 
     public SitterProfile getById(UUID id) {
-        return sitterProfileRepository.findById(id)
+        return sitterProfileRepository.findByIdWithUser(id)
                 .orElseThrow(() -> new RuntimeException("SitterProfile not found with id: " + id));
     }
 

@@ -1,6 +1,5 @@
 package com.techup.pet_sitter.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -24,7 +23,6 @@ public class SitterProfile {
     @Column(name = "user_id", nullable = false, columnDefinition = "uuid")
     private UUID userId;
 
-    @JsonIgnore
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "user_id")
@@ -131,7 +129,6 @@ public class SitterProfile {
         this.userId = userId;
     }
 
-    @JsonIgnore
     public User getUser() {
         return user;
     }
