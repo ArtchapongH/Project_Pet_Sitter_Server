@@ -1,6 +1,10 @@
 package com.techup.pet_sitter.service;
 
+import com.techup.pet_sitter.entity.PetType;
+import com.techup.pet_sitter.entity.SitterPetType;
 import com.techup.pet_sitter.entity.SitterProfile;
+import com.techup.pet_sitter.entity.User;
+import com.techup.pet_sitter.repository.SitterPetTypeRepository;
 import com.techup.pet_sitter.repository.SitterProfileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -9,12 +13,16 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class SitterProfileService {
 
     @Autowired
     private SitterProfileRepository sitterProfileRepository;
+
+    @Autowired
+    private SitterPetTypeRepository sitterPetTypeRepository;
 
     public SitterProfile create(SitterProfile sitterProfile) {
         return sitterProfileRepository.save(sitterProfile);
@@ -104,6 +112,56 @@ public class SitterProfileService {
     public SitterProfile getById(UUID id) {
         return sitterProfileRepository.findByIdWithUser(id)
                 .orElseThrow(() -> new RuntimeException("SitterProfile not found with id: " + id));
+    }
+
+    // ==========================================
+    // Join SitterProfile + User + PetType (via SitterPetType bridge)
+    // ==========================================
+
+    public SitterProfileDetailResponse getDetailById(UUID id) {
+        SitterProfile sitterProfile = getById(id);
+        User user = sitterProfile.getUser();
+        sitterProfile.setUser(null); // avoid duplicating user in the JSON response (returned separately below)
+
+        List<PetType> petTypes = sitterPetTypeRepository.findBySitterIdWithPetType(id).stream()
+                .map(SitterPetType::getPetType)
+                .collect(Collectors.toList());
+
+        SitterProfileDetailResponse response = new SitterProfileDetailResponse();
+        response.setSitterProfile(sitterProfile);
+        response.setUser(user);
+        response.setPetTypes(petTypes);
+        return response;
+    }
+
+    public static class SitterProfileDetailResponse {
+        private SitterProfile sitterProfile;
+        private User user;
+        private List<PetType> petTypes;
+
+        public SitterProfile getSitterProfile() {
+            return sitterProfile;
+        }
+
+        public void setSitterProfile(SitterProfile sitterProfile) {
+            this.sitterProfile = sitterProfile;
+        }
+
+        public User getUser() {
+            return user;
+        }
+
+        public void setUser(User user) {
+            this.user = user;
+        }
+
+        public List<PetType> getPetTypes() {
+            return petTypes;
+        }
+
+        public void setPetTypes(List<PetType> petTypes) {
+            this.petTypes = petTypes;
+        }
     }
 
     public SitterProfile update(UUID id, SitterProfile updated) {

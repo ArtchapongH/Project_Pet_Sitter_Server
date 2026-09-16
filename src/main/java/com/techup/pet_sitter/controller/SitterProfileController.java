@@ -39,8 +39,8 @@ public class SitterProfileController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<SitterProfile> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(sitterProfileService.getById(id));
+    public ResponseEntity<SitterProfileService.SitterProfileDetailResponse> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(sitterProfileService.getDetailById(id));
     }
 
     @PutMapping("/{id}")
