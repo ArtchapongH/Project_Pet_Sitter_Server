@@ -225,17 +225,52 @@ public class SitterProfileService {
         return sitterProfileRepository.save(existing);
     }
 
-    // Reject step: only runs when approval_status is "Waiting for verify"; reverts to "Unverified"
-    // and records the admin's rejection reason.
+    // Reject step: from "Waiting for verify" reverts to "Unverified"; from "Waiting for approve"
+    // (while not yet listed) moves to "Rejected". Either way records the admin's rejection reason.
     @Transactional
     public SitterProfile reject(UUID id, String reason) {
         SitterProfile existing = getById(id);
-        if (!"Waiting for verify".equals(existing.getApprovalStatus())) {
+        String status = existing.getApprovalStatus();
+
+        if ("Waiting for verify".equals(status)) {
+            existing.setApprovalStatus("Unverified");
+            existing.setRejectionReason(reason);
+            return sitterProfileRepository.save(existing);
+        }
+
+        if ("Waiting for approve".equals(status) && !existing.isListed()) {
+            existing.setApprovalStatus("Rejected");
+            existing.setRejectionReason(reason);
+            return sitterProfileRepository.save(existing);
+        }
+
+        return existing;
+    }
+
+    // Approve step: only runs when approval_status is "Waiting for approve"; applies pending_profile
+    // fields onto matching sitter_profiles columns, sets approval_status to "Approved", lists the sitter,
+    // and clears pending_profile.
+    @Transactional
+    public SitterProfile approve(UUID id) {
+        SitterProfile existing = getById(id);
+        if (!"Waiting for approve".equals(existing.getApprovalStatus())) {
             return existing;
         }
 
-        existing.setApprovalStatus("Unverified");
-        existing.setRejectionReason(reason);
+        String pendingProfile = existing.getPendingProfile();
+        if (pendingProfile != null && !pendingProfile.isBlank()) {
+            try {
+                objectMapper.readerForUpdating(existing)
+                        .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                        .readValue(pendingProfile);
+            } catch (JacksonException exception) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Invalid pending profile data");
+            }
+        }
+
+        existing.setApprovalStatus("Approved");
+        existing.setListed(true);
+        existing.setPendingProfile(null);
         return sitterProfileRepository.save(existing);
     }
 }

@@ -48,6 +48,11 @@ public class SitterProfileController {
         return ResponseEntity.ok(sitterProfileService.verify(id));
     }
 
+    @PatchMapping("/{id}/approve")
+    public ResponseEntity<SitterProfile> approve(@PathVariable UUID id) {
+        return ResponseEntity.ok(sitterProfileService.approve(id));
+    }
+
     @PatchMapping("/{id}/reject")
     public ResponseEntity<SitterProfile> reject(@PathVariable UUID id, @RequestBody RejectRequest request) {
         return ResponseEntity.ok(sitterProfileService.reject(id, request.reason()));
