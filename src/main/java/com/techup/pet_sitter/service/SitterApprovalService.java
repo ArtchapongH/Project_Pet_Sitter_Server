@@ -1,6 +1,7 @@
 package com.techup.pet_sitter.service;
 
 import com.techup.pet_sitter.dto.ListedSitterResponse;
+import com.techup.pet_sitter.dto.ListedSitterSearchResponse;
 import com.techup.pet_sitter.dto.ProfilePayload;
 import com.techup.pet_sitter.dto.ProfileResponse;
 import com.techup.pet_sitter.entity.PetType;
@@ -14,6 +15,9 @@ import com.techup.pet_sitter.repository.SitterPhotoRepository;
 import com.techup.pet_sitter.repository.SitterProfileRepository;
 import com.techup.pet_sitter.repository.UserRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -150,17 +154,82 @@ public class SitterApprovalService {
     @Transactional(readOnly = true)
     public List<ListedSitterResponse> listedProfiles() {
         return profiles.findByIsListedTrue().stream()
-                .map(profile -> new ListedSitterResponse(
-                        profile.getUserId(),
-                        profile.getDisplayName(),
-                        profile.getUser().getAvatarUrl(),
-                        sitterPetTypes.findBySitter_UserId(profile.getUserId()).stream()
-                                .map(link -> link.getPetType().getName()).toList(),
-                        profile.getServices(),
-                        profile.getIntroduction(),
-                        profile.getProvince()
-                ))
+                .map(this::listedResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ListedSitterSearchResponse searchListed(
+            String keyword,
+            List<String> petTypes,
+            BigDecimal minRating,
+            String experience,
+            Integer page,
+            Integer limit
+    ) {
+        int safePage = page == null || page < 1 ? 1 : page;
+        int safeLimit = limit == null ? 10 : Math.max(1, Math.min(50, limit));
+        String safeKeyword = keyword == null ? "" : keyword.trim();
+        List<String> safePetTypes = petTypes == null
+                ? List.of()
+                : petTypes.stream().filter(type -> type != null && !type.isBlank()).distinct().toList();
+        String safeExperience = experience == null ? "" : experience.trim();
+
+        if (minRating != null && (minRating.compareTo(BigDecimal.ZERO) < 0 || minRating.compareTo(BigDecimal.valueOf(5)) > 0)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rating must be between 0 and 5");
+        }
+
+        List<String> experienceValues = experienceValues(safeExperience);
+        Pageable pageable = PageRequest.of(safePage - 1, safeLimit);
+        Page<SitterProfile> result = profiles.searchListed(
+                safeKeyword,
+                !safePetTypes.isEmpty(),
+                safePetTypes.isEmpty() ? List.of("") : safePetTypes,
+                minRating,
+                safeExperience,
+                !safeExperience.isEmpty(),
+                experienceValues,
+                pageable
+        );
+
+        return new ListedSitterSearchResponse(
+                result.getContent().stream().map(this::listedResponse).toList(),
+                result.getNumber() + 1,
+                result.getTotalPages(),
+                result.getTotalElements(),
+                safeLimit
+        );
+    }
+
+    private ListedSitterResponse listedResponse(SitterProfile profile) {
+        List<SitterPhoto> profilePhotos = photos.findBySitter_UserIdOrderBySortOrder(profile.getUserId());
+        BigDecimal rating = profile.getRatingAvg() == null ? BigDecimal.ZERO : profile.getRatingAvg();
+        int reviewCount = profile.getReviewCount() == null ? 0 : profile.getReviewCount();
+        return new ListedSitterResponse(
+                profile.getUserId(),
+                profile.getDisplayName(),
+                profile.getUser().getAvatarUrl(),
+                sitterPetTypes.findBySitter_UserId(profile.getUserId()).stream()
+                        .map(link -> link.getPetType().getName()).toList(),
+                profile.getServices(),
+                profile.getIntroduction(),
+                profile.getProvince(),
+                profile.getUser().getName(),
+                profilePhotos.isEmpty() ? null : profilePhotos.get(0).getPhotoUrl(),
+                profile.getExperienceYears(),
+                rating,
+                reviewCount
+        );
+    }
+
+    private List<String> experienceValues(String experience) {
+        return switch (experience) {
+            case "" -> List.of("0–1 year", "1–3 years", "3–5 years", "5+ years");
+            case "0-2 Years" -> List.of("0–1 year", "1–3 years");
+            case "3-5 Years" -> List.of("3–5 years");
+            case "5+ Years" -> List.of("5+ years");
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown experience filter");
+        };
     }
 
     @Transactional(readOnly = true)

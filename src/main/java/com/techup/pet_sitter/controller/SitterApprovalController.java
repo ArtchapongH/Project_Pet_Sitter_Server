@@ -1,6 +1,6 @@
 package com.techup.pet_sitter.controller;
 
-import com.techup.pet_sitter.dto.ListedSitterResponse;
+import com.techup.pet_sitter.dto.ListedSitterSearchResponse;
 import com.techup.pet_sitter.dto.ProfilePayload;
 import com.techup.pet_sitter.dto.ProfileResponse;
 import com.techup.pet_sitter.dto.RejectRequest;
@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -62,7 +63,14 @@ public class SitterApprovalController {
     }
 
     @GetMapping("/sitters")
-    List<ListedSitterResponse> listedSitters() {
-        return approvals.listedProfiles();
+    ListedSitterSearchResponse listedSitters(
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(name = "petType", required = false) List<String> petTypes,
+            @RequestParam(required = false) BigDecimal minRating,
+            @RequestParam(defaultValue = "") String experience,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer limit
+    ) {
+        return approvals.searchListed(keyword, petTypes, minRating, experience, page, limit);
     }
 }
