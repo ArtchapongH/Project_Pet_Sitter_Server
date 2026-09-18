@@ -226,7 +226,8 @@ public class SitterProfileService {
     }
 
     // Reject step: from "Waiting for verify" reverts to "Unverified"; from "Waiting for approve"
-    // (while not yet listed) moves to "Rejected". Either way records the admin's rejection reason.
+    // moves to "Rejected" (and unlists the sitter if it was already listed). Either way records
+    // the admin's rejection reason.
     @Transactional
     public SitterProfile reject(UUID id, String reason) {
         SitterProfile existing = getById(id);
@@ -238,9 +239,10 @@ public class SitterProfileService {
             return sitterProfileRepository.save(existing);
         }
 
-        if ("Waiting for approve".equals(status) && !existing.isListed()) {
+        if ("Waiting for approve".equals(status)) {
             existing.setApprovalStatus("Rejected");
             existing.setRejectionReason(reason);
+            existing.setListed(false);
             return sitterProfileRepository.save(existing);
         }
 
