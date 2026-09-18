@@ -10,6 +10,8 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -89,6 +91,7 @@ public class SitterProfile {
     private boolean isListed;
 
     @Column(name = "pending_profile", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String pendingProfile;
 
     @Column(name = "account_name")

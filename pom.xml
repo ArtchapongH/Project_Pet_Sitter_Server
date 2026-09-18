@@ -8,8 +8,8 @@
 		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.techup</groupId>
-	<artifactId>pet-sitter</artifactId>
+	<groupId>com.FSD_11</groupId>
+	<artifactId>Pet_Sitter</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name/>
 	<description/>
