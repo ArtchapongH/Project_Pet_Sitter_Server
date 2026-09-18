@@ -12,4 +12,8 @@ public interface SitterPetTypeRepository extends JpaRepository<SitterPetType, Lo
 
     @Query("SELECT spt FROM SitterPetType spt JOIN FETCH spt.petType WHERE spt.id.sitterId = :sitterId")
     List<SitterPetType> findBySitterIdWithPetType(@Param("sitterId") UUID sitterId);
+
+    List<SitterPetType> findBySitter_UserId(UUID sitterId);
+
+    void deleteBySitter_UserId(UUID sitterId);
 }
