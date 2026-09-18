@@ -10,6 +10,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +29,9 @@ public class SitterProfileService {
 
     @Autowired
     private SitterPetTypeRepository sitterPetTypeRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     public SitterProfile create(SitterProfile sitterProfile) {
         return sitterProfileRepository.save(sitterProfile);
@@ -189,5 +198,44 @@ public class SitterProfileService {
     public void delete(UUID id) {
         SitterProfile existing = getById(id);
         sitterProfileRepository.delete(existing);
+    }
+
+    // Verify step: only runs when approval_status is "Waiting for verify"; applies pending_profile
+    // fields onto matching sitter_profiles columns, sets approval_status to "Verified", and clears pending_profile.
+    @Transactional
+    public SitterProfile verify(UUID id) {
+        SitterProfile existing = getById(id);
+        if (!"Waiting for verify".equals(existing.getApprovalStatus())) {
+            return existing;
+        }
+
+        String pendingProfile = existing.getPendingProfile();
+        if (pendingProfile != null && !pendingProfile.isBlank()) {
+            try {
+                objectMapper.readerForUpdating(existing)
+                        .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                        .readValue(pendingProfile);
+            } catch (JacksonException exception) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Invalid pending profile data");
+            }
+        }
+
+        existing.setApprovalStatus("Verified");
+        existing.setPendingProfile(null);
+        return sitterProfileRepository.save(existing);
+    }
+
+    // Reject step: only runs when approval_status is "Waiting for verify"; reverts to "Unverified"
+    // and records the admin's rejection reason.
+    @Transactional
+    public SitterProfile reject(UUID id, String reason) {
+        SitterProfile existing = getById(id);
+        if (!"Waiting for verify".equals(existing.getApprovalStatus())) {
+            return existing;
+        }
+
+        existing.setApprovalStatus("Unverified");
+        existing.setRejectionReason(reason);
+        return sitterProfileRepository.save(existing);
     }
 }
