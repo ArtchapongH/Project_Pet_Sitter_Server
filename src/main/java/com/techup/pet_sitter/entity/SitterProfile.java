@@ -106,6 +106,9 @@ public class SitterProfile {
     @Column(name = "rejection_reason")
     private String rejectionReason;
 
+    @Column(name = "pet_sitter_state", nullable = true)
+    private Integer pet_sitter_state;
+
     public SitterProfile() {
     }
 
@@ -335,5 +338,13 @@ public class SitterProfile {
 
     public void setRejectionReason(String rejectionReason) {
         this.rejectionReason = rejectionReason;
+    }
+
+    public Integer getPet_sitter_state() {
+        return pet_sitter_state;
+    }
+
+    public void setPet_sitter_state(Integer pet_sitter_state) {
+        this.pet_sitter_state = pet_sitter_state;
     }
 }
