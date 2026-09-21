@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
@@ -35,12 +36,18 @@ public class SitterBookingService {
     }
 
     @Transactional(readOnly = true)
-    public List<SitterBookingResponse> list(UUID sitterId, String query) {
+    public List<SitterBookingResponse> list(UUID sitterId, String query, LocalDate from, LocalDate to) {
         String needle = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
         return bookings.findBySitter_UserIdOrderByCreatedAtDesc(sitterId).stream()
+                .filter(item -> from == null || !item.getEndDate().isBefore(from))
+                .filter(item -> to == null || !item.getStartDate().isAfter(to))
                 .map(this::toResponse)
                 .filter(item -> needle.isEmpty() || matches(item, needle))
                 .toList();
+    }
+
+    public List<SitterBookingResponse> list(UUID sitterId, String query) {
+        return list(sitterId, query, null, null);
     }
 
     @Transactional(readOnly = true)
