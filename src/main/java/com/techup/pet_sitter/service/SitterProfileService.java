@@ -1,11 +1,16 @@
 package com.techup.pet_sitter.service;
 
+import com.techup.pet_sitter.dto.ProfilePayload;
 import com.techup.pet_sitter.entity.PetType;
 import com.techup.pet_sitter.entity.SitterPetType;
+import com.techup.pet_sitter.entity.SitterPhoto;
 import com.techup.pet_sitter.entity.SitterProfile;
 import com.techup.pet_sitter.entity.User;
+import com.techup.pet_sitter.repository.PetTypeRepository;
 import com.techup.pet_sitter.repository.SitterPetTypeRepository;
+import com.techup.pet_sitter.repository.SitterPhotoRepository;
 import com.techup.pet_sitter.repository.SitterProfileRepository;
+import com.techup.pet_sitter.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -14,9 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 import tools.jackson.core.JacksonException;
-import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -28,7 +34,16 @@ public class SitterProfileService {
     private SitterProfileRepository sitterProfileRepository;
 
     @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
     private SitterPetTypeRepository sitterPetTypeRepository;
+
+    @Autowired
+    private PetTypeRepository petTypeRepository;
+
+    @Autowired
+    private SitterPhotoRepository sitterPhotoRepository;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -200,8 +215,91 @@ public class SitterProfileService {
         sitterProfileRepository.delete(existing);
     }
 
-    // Verify step: only runs when approval_status is "Waiting for verify"; applies pending_profile
-    // fields onto matching sitter_profiles columns, sets approval_status to "Verified", and clears pending_profile.
+    // Parses pending_profile JSON (matches ProfilePayload shape submitted by the sitter) into a typed record.
+    private ProfilePayload readPendingProfile(String pendingProfileJson) {
+        if (pendingProfileJson == null || pendingProfileJson.isBlank()) return null;
+        try {
+            return objectMapper.readValue(pendingProfileJson, ProfilePayload.class);
+        } catch (JacksonException exception) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Invalid pending profile data");
+        }
+    }
+
+    // Applies the identity fields collected on first submission onto the User + SitterProfile rows.
+    private void applyBasicFields(SitterProfile profile, ProfilePayload payload) {
+        User user = profile.getUser();
+        user.setName(payload.fullName());
+        user.setPhone(payload.phone());
+        user.setEmail(payload.email());
+        user.setDateOfBirth(payload.dateOfBirth());
+        user.setIdNumber(payload.idNumber());
+        user.setAvatarUrl(payload.avatarUrl());
+        profile.setIntroduction(payload.introduction());
+        profile.setExperienceYears(payload.experienceYears());
+        userRepository.save(user);
+    }
+
+    // Applies the full sitter profile submitted on the second round, including pet types and photos.
+    private void applyFullProfile(SitterProfile profile, ProfilePayload payload) {
+        applyBasicFields(profile, payload);
+        profile.setDisplayName(payload.displayName());
+        profile.setServices(payload.services());
+        profile.setMyPlace(payload.myPlace());
+        profile.setAddressDetail(payload.addressDetail());
+        profile.setDistrict(payload.district());
+        profile.setSubDistrict(payload.subDistrict());
+        profile.setProvince(payload.province());
+        profile.setPostCode(payload.postCode());
+        profile.setLatitude(payload.latitude());
+        profile.setLongitude(payload.longitude());
+        profile.setBankName(payload.bankName());
+        profile.setAccountName(payload.accountName());
+        profile.setAccountNumber(payload.accountNumber());
+        profile.setBankCode(payload.bankCode());
+        profile.setBookBankImageUrl(payload.bookBankImageUrl());
+        replacePetTypes(profile, payload.petTypes());
+        replacePhotos(profile, payload.photoUrls());
+    }
+
+    private void replacePetTypes(SitterProfile profile, List<String> names) {
+        List<PetType> matches = new HashSet<>(names).stream()
+                .map(name -> petTypeRepository.findByName(name).orElseGet(() -> {
+                    PetType petType = new PetType();
+                    petType.setName(name);
+                    return petTypeRepository.save(petType);
+                }))
+                .toList();
+
+        sitterPetTypeRepository.deleteBySitter_UserId(profile.getUserId());
+
+        List<SitterPetType> links = matches.stream().map(petType -> {
+            SitterPetType link = new SitterPetType();
+            link.setId(new SitterPetType.SitterPetTypeId(profile.getUserId(), petType.getId()));
+            link.setSitter(profile);
+            link.setPetType(petType);
+            return link;
+        }).toList();
+
+        sitterPetTypeRepository.saveAll(links);
+    }
+
+    private void replacePhotos(SitterProfile profile, List<String> urls) {
+        sitterPhotoRepository.deleteBySitter_UserId(profile.getUserId());
+
+        List<SitterPhoto> replacements = new ArrayList<>();
+        for (int index = 0; index < urls.size(); index++) {
+            SitterPhoto photo = new SitterPhoto();
+            photo.setSitter(profile);
+            photo.setPhotoUrl(urls.get(index));
+            photo.setSortOrder(index);
+            replacements.add(photo);
+        }
+
+        sitterPhotoRepository.saveAll(replacements);
+    }
+
+    // Verify step: only runs when approval_status is "Waiting for verify"; applies pending_profile's
+    // identity fields onto the User + sitter_profiles rows, sets approval_status to "Verified", and clears pending_profile.
     @Transactional
     public SitterProfile verify(UUID id) {
         SitterProfile existing = getById(id);
@@ -209,17 +307,12 @@ public class SitterProfileService {
             return existing;
         }
 
-        String pendingProfile = existing.getPendingProfile();
-        if (pendingProfile != null && !pendingProfile.isBlank()) {
-            try {
-                objectMapper.readerForUpdating(existing)
-                        .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                        .readValue(pendingProfile);
-            } catch (JacksonException exception) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Invalid pending profile data");
-            }
+        ProfilePayload pending = readPendingProfile(existing.getPendingProfile());
+        if (pending != null) {
+            applyBasicFields(existing, pending);
         }
 
+        existing.getUser().setVerified(true);
         existing.setApprovalStatus("Verified");
         existing.setPendingProfile(null);
         return sitterProfileRepository.save(existing);
@@ -249,9 +342,9 @@ public class SitterProfileService {
         return existing;
     }
 
-    // Approve step: only runs when approval_status is "Waiting for approve"; applies pending_profile
-    // fields onto matching sitter_profiles columns, sets approval_status to "Approved", lists the sitter,
-    // and clears pending_profile.
+    // Approve step: only runs when approval_status is "Waiting for approve"; applies pending_profile's
+    // full fields (incl. pet types and photos) onto sitter_profiles, sets approval_status to "Approved",
+    // lists the sitter, and clears pending_profile.
     @Transactional
     public SitterProfile approve(UUID id) {
         SitterProfile existing = getById(id);
@@ -259,15 +352,9 @@ public class SitterProfileService {
             return existing;
         }
 
-        String pendingProfile = existing.getPendingProfile();
-        if (pendingProfile != null && !pendingProfile.isBlank()) {
-            try {
-                objectMapper.readerForUpdating(existing)
-                        .without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                        .readValue(pendingProfile);
-            } catch (JacksonException exception) {
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Invalid pending profile data");
-            }
+        ProfilePayload pending = readPendingProfile(existing.getPendingProfile());
+        if (pending != null) {
+            applyFullProfile(existing, pending);
         }
 
         existing.setApprovalStatus("Approved");
