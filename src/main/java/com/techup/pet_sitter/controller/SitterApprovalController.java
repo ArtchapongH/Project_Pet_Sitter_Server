@@ -1,12 +1,16 @@
 package com.techup.pet_sitter.controller;
 
+import com.techup.pet_sitter.dto.ListedSitterResponse;
 import com.techup.pet_sitter.dto.ListedSitterSearchResponse;
 import com.techup.pet_sitter.dto.ProfilePayload;
 import com.techup.pet_sitter.dto.ProfileResponse;
+import com.techup.pet_sitter.dto.PublicReviewResponse;
+import com.techup.pet_sitter.dto.PublicSitterDetailResponse;
 import com.techup.pet_sitter.dto.RejectRequest;
 import com.techup.pet_sitter.service.SitterApprovalService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -72,5 +76,25 @@ public class SitterApprovalController {
             @RequestParam(defaultValue = "10") Integer limit
     ) {
         return approvals.searchListed(keyword, petTypes, minRating, experience, page, limit);
+    }
+
+    @GetMapping("/sitters/map")
+    List<ListedSitterResponse> listedSittersForMap(
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(name = "petType", required = false) List<String> petTypes,
+            @RequestParam(required = false) BigDecimal minRating,
+            @RequestParam(defaultValue = "") String experience
+    ) {
+        return approvals.searchListedForMap(keyword, petTypes, minRating, experience);
+    }
+
+    @GetMapping("/sitters/{sitterId}")
+    PublicSitterDetailResponse publicSitter(@PathVariable UUID sitterId) {
+        return approvals.publicDetail(sitterId);
+    }
+
+    @GetMapping("/sitters/{sitterId}/reviews")
+    List<PublicReviewResponse> publicReviews(@PathVariable UUID sitterId) {
+        return approvals.publicReviews(sitterId);
     }
 }
