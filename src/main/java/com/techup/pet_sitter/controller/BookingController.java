@@ -1,5 +1,6 @@
 package com.techup.pet_sitter.controller;
 
+import com.techup.pet_sitter.dto.BookingAdminListItem;
 import com.techup.pet_sitter.dto.BookingRequest;
 import com.techup.pet_sitter.dto.BookingResponse;
 import com.techup.pet_sitter.entity.Booking;
@@ -9,6 +10,8 @@ import com.techup.pet_sitter.repository.UserRepository;
 import com.techup.pet_sitter.service.SitterApprovalService;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -68,5 +71,10 @@ public class BookingController {
         booking.setStatus("waiting_confirm");
         Booking saved = bookings.save(booking);
         return new BookingResponse(saved.getId(), saved.getStatus());
+    }
+
+    @GetMapping("/sitter/{sitterId}")
+    List<BookingAdminListItem> listBySitter(@PathVariable UUID sitterId) {
+        return bookings.findAdminListBySitterId(sitterId);
     }
 }
