@@ -5,6 +5,7 @@ import com.techup.pet_sitter.dto.ProfileResponse;
 import com.techup.pet_sitter.entity.SitterProfile;
 import com.techup.pet_sitter.entity.User;
 import com.techup.pet_sitter.repository.PetTypeRepository;
+import com.techup.pet_sitter.repository.ReviewRepository;
 import com.techup.pet_sitter.repository.SitterPetTypeRepository;
 import com.techup.pet_sitter.repository.SitterPhotoRepository;
 import com.techup.pet_sitter.repository.SitterProfileRepository;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -34,9 +36,10 @@ class SitterApprovalServiceTest {
     private final PetTypeRepository petTypes = mock(PetTypeRepository.class);
     private final SitterPetTypeRepository sitterPetTypes = mock(SitterPetTypeRepository.class);
     private final SitterPhotoRepository photos = mock(SitterPhotoRepository.class);
+    private final ReviewRepository reviews = mock(ReviewRepository.class);
     private final ObjectMapper json = mock(ObjectMapper.class);
     private final SitterApprovalService service = new SitterApprovalService(
-            users, profiles, petTypes, sitterPetTypes, photos, json
+            users, profiles, petTypes, sitterPetTypes, photos, reviews, json
     );
     private final UUID sitterId = UUID.randomUUID();
     private final UUID adminId = UUID.randomUUID();
@@ -109,6 +112,21 @@ class SitterApprovalServiceTest {
         assertThrows(ResponseStatusException.class, () -> service.requireBookable(sitterId));
         profile.setListed(true);
         assertEquals(profile, service.requireBookable(sitterId));
+    }
+
+    @Test
+    void publicDetailOnlyReturnsListedProfileWithExactCoordinates() {
+        SitterProfile profile = profile(user(), "Approved", true);
+        profile.setLatitude(new BigDecimal("13.75630000"));
+        profile.setLongitude(new BigDecimal("100.50180000"));
+        when(profiles.findByIdWithUser(sitterId)).thenReturn(Optional.of(profile));
+
+        var result = service.publicDetail(sitterId);
+
+        assertEquals(new BigDecimal("13.75630000"), result.latitude());
+        assertEquals(new BigDecimal("100.50180000"), result.longitude());
+        profile.setListed(false);
+        assertThrows(ResponseStatusException.class, () -> service.publicDetail(sitterId));
     }
 
     private User user() {
