@@ -6,6 +6,7 @@ import com.techup.pet_sitter.entity.Booking;
 import com.techup.pet_sitter.entity.User;
 import com.techup.pet_sitter.repository.BookingRepository;
 import com.techup.pet_sitter.repository.UserRepository;
+import com.techup.pet_sitter.service.OwnerProfileRules;
 import com.techup.pet_sitter.service.SitterApprovalService;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +51,8 @@ public class BookingController {
         }
         User owner = users.findById(ownerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Owner not found"));
+        OwnerProfileRules.requireNotBanned(owner);
+        OwnerProfileRules.requireForBooking(owner);
         Booking booking = new Booking();
         booking.setOwner(owner);
         booking.setSitter(approvals.requireBookable(request.sitterId()));
