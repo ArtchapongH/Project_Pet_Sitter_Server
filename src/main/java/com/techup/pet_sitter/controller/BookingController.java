@@ -25,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -44,8 +45,10 @@ public class BookingController {
 
     @GetMapping("/sitter")
     List<SitterBookingResponse> listForSitter(@RequestHeader("X-User-Id") UUID sitterId,
-                                              @RequestParam(required = false) String query) {
-        return sitterBookings.list(sitterId, query);
+                                              @RequestParam(required = false) String query,
+                                              @RequestParam(required = false) LocalDate from,
+                                              @RequestParam(required = false) LocalDate to) {
+        return sitterBookings.list(sitterId, query, from, to);
     }
 
     @GetMapping("/sitter/{id}")
