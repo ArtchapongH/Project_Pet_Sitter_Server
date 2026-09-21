@@ -7,6 +7,7 @@ import com.techup.pet_sitter.entity.Booking;
 import com.techup.pet_sitter.entity.User;
 import com.techup.pet_sitter.repository.BookingRepository;
 import com.techup.pet_sitter.repository.UserRepository;
+import com.techup.pet_sitter.service.BookingAdminService;
 import com.techup.pet_sitter.service.SitterApprovalService;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,11 +29,14 @@ public class BookingController {
     private final BookingRepository bookings;
     private final UserRepository users;
     private final SitterApprovalService approvals;
+    private final BookingAdminService bookingAdminService;
 
-    public BookingController(BookingRepository bookings, UserRepository users, SitterApprovalService approvals) {
+    public BookingController(BookingRepository bookings, UserRepository users, SitterApprovalService approvals,
+                              BookingAdminService bookingAdminService) {
         this.bookings = bookings;
         this.users = users;
         this.approvals = approvals;
+        this.bookingAdminService = bookingAdminService;
     }
 
     @PostMapping
@@ -75,6 +79,6 @@ public class BookingController {
 
     @GetMapping("/sitter/{sitterId}")
     List<BookingAdminListItem> listBySitter(@PathVariable UUID sitterId) {
-        return bookings.findAdminListBySitterId(sitterId);
+        return bookingAdminService.listForSitter(sitterId);
     }
 }
