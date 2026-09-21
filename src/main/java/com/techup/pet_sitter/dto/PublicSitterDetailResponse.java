@@ -4,17 +4,22 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-public record ListedSitterResponse(
+public record PublicSitterDetailResponse(
         UUID userId,
         String displayName,
         String avatarUrl,
-        List<String> petTypes,
-        String services,
-        String introduction,
-        String province,
         String ownerName,
-        String imageUrl,
+        String introduction,
+        String services,
+        String myPlace,
+        String addressDetail,
+        String subDistrict,
+        String district,
+        String province,
+        String postCode,
         String experienceYears,
+        List<String> petTypes,
+        List<String> photoUrls,
         BigDecimal ratingAvg,
         Integer reviewCount,
         BigDecimal latitude,
