@@ -1,5 +1,6 @@
 package com.techup.pet_sitter.controller;
 
+import com.techup.pet_sitter.dto.RejectRequest;
 import com.techup.pet_sitter.entity.SitterProfile;
 import com.techup.pet_sitter.service.SitterProfileService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,21 @@ public class SitterProfileController {
     @PutMapping("/{id}")
     public ResponseEntity<SitterProfile> update(@PathVariable UUID id, @RequestBody SitterProfile sitterProfile) {
         return ResponseEntity.ok(sitterProfileService.update(id, sitterProfile));
+    }
+
+    @PatchMapping("/{id}/verify")
+    public ResponseEntity<SitterProfile> verify(@PathVariable UUID id) {
+        return ResponseEntity.ok(sitterProfileService.verify(id));
+    }
+
+    @PatchMapping("/{id}/approve")
+    public ResponseEntity<SitterProfile> approve(@PathVariable UUID id) {
+        return ResponseEntity.ok(sitterProfileService.approve(id));
+    }
+
+    @PatchMapping("/{id}/reject")
+    public ResponseEntity<SitterProfile> reject(@PathVariable UUID id, @RequestBody RejectRequest request) {
+        return ResponseEntity.ok(sitterProfileService.reject(id, request.reason()));
     }
 
     @DeleteMapping("/{id}")

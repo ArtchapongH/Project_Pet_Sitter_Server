@@ -1,5 +1,6 @@
 package com.techup.pet_sitter.controller;
 
+import com.techup.pet_sitter.dto.BookingAdminListItem;
 import com.techup.pet_sitter.dto.BookingRequest;
 import com.techup.pet_sitter.dto.BookingResponse;
 import com.techup.pet_sitter.dto.BookingStatusRequest;
@@ -9,14 +10,15 @@ import com.techup.pet_sitter.entity.User;
 import com.techup.pet_sitter.repository.BookingRepository;
 import com.techup.pet_sitter.repository.UserRepository;
 import com.techup.pet_sitter.service.OwnerProfileRules;
+import com.techup.pet_sitter.service.BookingAdminService;
 import com.techup.pet_sitter.service.SitterApprovalService;
 import com.techup.pet_sitter.service.SitterBookingService;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -35,13 +37,16 @@ public class BookingController {
     private final UserRepository users;
     private final SitterApprovalService approvals;
     private final SitterBookingService sitterBookings;
+    private final BookingAdminService bookingAdminService;
 
     public BookingController(BookingRepository bookings, UserRepository users, SitterApprovalService approvals,
-                             SitterBookingService sitterBookings) {
+                              SitterBookingService sitterBookings,
+                              BookingAdminService bookingAdminService) {
         this.bookings = bookings;
         this.users = users;
         this.approvals = approvals;
         this.sitterBookings = sitterBookings;
+        this.bookingAdminService = bookingAdminService;
     }
 
     @GetMapping("/sitter")
@@ -101,5 +106,10 @@ public class BookingController {
         booking.setStatus("waiting_confirm");
         Booking saved = bookings.save(booking);
         return new BookingResponse(saved.getId(), saved.getStatus());
+    }
+
+    @GetMapping("/admin/sitter/{sitterId}")
+    List<BookingAdminListItem> listBySitter(@PathVariable UUID sitterId) {
+        return bookingAdminService.listForSitter(sitterId);
     }
 }
