@@ -8,6 +8,9 @@ public record OwnerPetItem(
         Integer ageMonths,
         String avatarUrl,
         String petTypeName,
-        Boolean isSuspended
+        Boolean isSuspended,
+        String color,
+        Float weightKg,
+        String about
 ) {
 }

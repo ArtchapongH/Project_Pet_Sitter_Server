@@ -14,7 +14,7 @@ public interface PetRepository extends JpaRepository<Pet, Long> {
     long countByOwnerId(UUID ownerId);
 
     @Query("SELECT new com.techup.pet_sitter.dto.OwnerPetItem(" +
-            "p.id, p.name, p.breed, p.sex, p.ageMonths, p.avatarUrl, pt.name, p.isSuspended) " +
+            "p.id, p.name, p.breed, p.sex, p.ageMonths, p.avatarUrl, pt.name, p.isSuspended, p.color, p.weightKg, p.about) " +
             "FROM Pet p JOIN p.petType pt " +
             "WHERE p.owner.id = :ownerId " +
             "ORDER BY p.createdAt DESC")
