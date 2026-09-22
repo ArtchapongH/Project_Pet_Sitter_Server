@@ -18,9 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -42,13 +40,13 @@ public class BookingController {
     private final BookingAdminService bookingAdminService;
 
     public BookingController(BookingRepository bookings, UserRepository users, SitterApprovalService approvals,
-                             SitterBookingService sitterBookings) {
-    public BookingController(BookingRepository bookings, UserRepository users, SitterApprovalService approvals,
+                              SitterBookingService sitterBookings,
                               BookingAdminService bookingAdminService) {
         this.bookings = bookings;
         this.users = users;
         this.approvals = approvals;
         this.sitterBookings = sitterBookings;
+        this.bookingAdminService = bookingAdminService;
     }
 
     @GetMapping("/sitter")
@@ -68,7 +66,6 @@ public class BookingController {
     SitterBookingResponse changeStatus(@RequestHeader("X-User-Id") UUID sitterId, @PathVariable Long id,
                                        @RequestBody BookingStatusRequest request) {
         return sitterBookings.changeStatus(sitterId, id, request.status());
-        this.bookingAdminService = bookingAdminService;
     }
 
     @PostMapping
@@ -111,7 +108,7 @@ public class BookingController {
         return new BookingResponse(saved.getId(), saved.getStatus());
     }
 
-    @GetMapping("/sitter/{sitterId}")
+    @GetMapping("/admin/sitter/{sitterId}")
     List<BookingAdminListItem> listBySitter(@PathVariable UUID sitterId) {
         return bookingAdminService.listForSitter(sitterId);
     }
