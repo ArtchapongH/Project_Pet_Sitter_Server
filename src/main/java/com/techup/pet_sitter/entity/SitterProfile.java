@@ -97,7 +97,7 @@ public class SitterProfile {
     @Column(name = "account_name")
     private String accountName;
 
-    @Column(name = "book_bank_image_url")
+    @Column(name = "book_bank_image_url", columnDefinition = "text")
     private String bookBankImageUrl;
 
     @Column(name = "bank_code")
