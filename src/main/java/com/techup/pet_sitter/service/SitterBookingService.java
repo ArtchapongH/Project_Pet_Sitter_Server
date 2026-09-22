@@ -5,6 +5,7 @@ import com.techup.pet_sitter.entity.Booking;
 import com.techup.pet_sitter.entity.BookingPet;
 import com.techup.pet_sitter.repository.BookingPetRepository;
 import com.techup.pet_sitter.repository.BookingRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ public class SitterBookingService {
     private final BookingPetRepository bookingPets;
     private final Clock clock;
 
+    @Autowired
     public SitterBookingService(BookingRepository bookings, BookingPetRepository bookingPets) {
         this(bookings, bookingPets, Clock.system(BANGKOK));
     }
