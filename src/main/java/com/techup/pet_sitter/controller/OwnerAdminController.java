@@ -40,4 +40,10 @@ public class OwnerAdminController {
         ownerAdminService.setBanned(id, false);
         return ResponseEntity.ok(ownerAdminService.getDetailById(id));
     }
+
+    @PatchMapping("/{ownerId}/pets/{petId}/suspend")
+    public ResponseEntity<Void> suspendPet(@PathVariable UUID ownerId, @PathVariable Long petId) {
+        ownerAdminService.suspendPet(ownerId, petId);
+        return ResponseEntity.noContent().build();
+    }
 }

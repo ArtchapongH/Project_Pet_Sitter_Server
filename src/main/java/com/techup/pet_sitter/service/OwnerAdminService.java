@@ -2,6 +2,7 @@ package com.techup.pet_sitter.service;
 
 import com.techup.pet_sitter.dto.OwnerAdminDetail;
 import com.techup.pet_sitter.dto.OwnerAdminListItem;
+import com.techup.pet_sitter.entity.Pet;
 import com.techup.pet_sitter.entity.User;
 import com.techup.pet_sitter.repository.PetRepository;
 import com.techup.pet_sitter.repository.ReviewRepository;
@@ -74,6 +75,18 @@ public class OwnerAdminService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pet owner not found"));
         user.setBanned(banned);
         return userRepository.save(user);
+    }
+
+    public Pet suspendPet(UUID ownerId, Long petId) {
+        if (!userRepository.existsById(ownerId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Pet owner not found");
+        }
+
+        Pet pet = petRepository.findById(petId)
+                .filter(foundPet -> foundPet.getOwner().getId().equals(ownerId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pet not found for this owner"));
+        pet.setIsSuspended(true);
+        return petRepository.save(pet);
     }
 
     public static class OwnerAdminPageResponse {
