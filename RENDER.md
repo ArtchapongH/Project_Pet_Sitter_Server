@@ -12,7 +12,7 @@ Set these environment variables in the service:
 | `SUPABASE_URL` | Supabase project URL; required to validate access tokens |
 | `SUPABASE_API_KEY` | Server-side Supabase key used for Storage uploads |
 | `SUPABASE_BUCKET` | Storage bucket name; defaults to `uploads` |
-| `CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins, without paths or trailing slashes, such as `https://your-client.onrender.com` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins for direct browser calls, without paths or trailing slashes; leave empty when all browser API calls use the Vercel `/api` rewrite |
 | `SPRING_JPA_DDL_AUTO` | Defaults to `update`; review before production schema changes |
 | `SPRING_JPA_SHOW_SQL` | Defaults to `false` |
 | `APP_LOG_LEVEL` | Defaults to `INFO` |

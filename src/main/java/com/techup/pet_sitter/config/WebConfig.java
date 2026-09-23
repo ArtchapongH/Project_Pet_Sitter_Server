@@ -15,12 +15,15 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        // Pattern-based match so any local dev port (Vite may fall back to 5174, 5175, ...) still works
+        String[] origins = Arrays.stream(allowedOriginPatterns.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toArray(String[]::new);
+        // An empty value disables cross-origin access; same-origin /api proxy requests still work.
+        if (origins.length == 0) return;
+
         registry.addMapping("/api/**")
-                .allowedOriginPatterns(Arrays.stream(allowedOriginPatterns.split(","))
-                        .map(String::trim)
-                        .filter(origin -> !origin.isEmpty())
-                        .toArray(String[]::new))
+                .allowedOriginPatterns(origins)
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);
