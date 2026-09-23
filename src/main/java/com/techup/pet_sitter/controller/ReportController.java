@@ -5,6 +5,7 @@ import com.techup.pet_sitter.entity.Report;
 import com.techup.pet_sitter.repository.ReportRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -16,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 @RestController
+@PreAuthorize("@adminAccess.isAdmin(authentication)")
 @RequestMapping("/api/reports")
 public class ReportController {
 
@@ -26,28 +28,28 @@ public class ReportController {
     }
 
     @GetMapping
-    List<ReportAdminListItem> listAll() {
+    public List<ReportAdminListItem> listAll() {
         return reports.findAdminList();
     }
 
     @GetMapping("/{id}")
-    ReportAdminListItem getById(@PathVariable Long id) {
+    public ReportAdminListItem getById(@PathVariable Long id) {
         return reports.findAdminDetailById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Report not found"));
     }
 
     @PatchMapping("/{id}/cancel")
-    ReportAdminListItem cancel(@PathVariable Long id) {
+    public ReportAdminListItem cancel(@PathVariable Long id) {
         return updateStatus(id, "canceled");
     }
 
     @PatchMapping("/{id}/resolve")
-    ReportAdminListItem resolve(@PathVariable Long id) {
+    public ReportAdminListItem resolve(@PathVariable Long id) {
         return updateStatus(id, "resolved");
     }
 
     @DeleteMapping("/{id}")
-    ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         if (!reports.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Report not found");
         }
