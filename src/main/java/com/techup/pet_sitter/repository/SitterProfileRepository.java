@@ -106,6 +106,7 @@ public interface SitterProfileRepository extends JpaRepository<SitterProfile, UU
         SELECT sp FROM SitterProfile sp
         JOIN FETCH sp.user u
         WHERE (:status = '' OR sp.approvalStatus = :status)
+        AND sp.pet_sitter_state IN (2, 3)
         AND (
             :keyword = ''
             OR LOWER(u.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
@@ -124,6 +125,7 @@ public interface SitterProfileRepository extends JpaRepository<SitterProfile, UU
         SELECT COUNT(sp) FROM SitterProfile sp
         JOIN sp.user u
         WHERE (:status = '' OR sp.approvalStatus = :status)
+        AND sp.pet_sitter_state IN (2, 3)
         AND (
             :keyword = ''
             OR LOWER(u.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
