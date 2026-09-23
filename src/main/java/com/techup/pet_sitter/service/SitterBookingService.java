@@ -25,6 +25,7 @@ public class SitterBookingService {
     private final BookingPetRepository bookingPets;
     private final Clock clock;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public SitterBookingService(BookingRepository bookings, BookingPetRepository bookingPets) {
         this(bookings, bookingPets, Clock.system(BANGKOK));
     }
