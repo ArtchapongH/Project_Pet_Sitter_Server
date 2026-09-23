@@ -34,6 +34,10 @@ public class AuthSyncService {
             user.setVerified(false);
             user.setBanned(false);
         }
+        String accountRole = "sitter".equals(request.role()) ? "sitter" : "owner";
+        if (creating || user.getRole() == null || user.getRole().isBlank()) {
+            user.setRole(accountRole);
+        }
         users.findByEmailIgnoreCase(email).ifPresent(existing -> {
             if (!existing.getId().equals(userId)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "This email is already registered");
