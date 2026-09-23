@@ -1,5 +1,6 @@
 package com.techup.pet_sitter.controller;
 
+import com.techup.pet_sitter.dto.BookingAdminListItem;
 import com.techup.pet_sitter.dto.BookingRequest;
 import com.techup.pet_sitter.dto.BookingResponse;
 import com.techup.pet_sitter.dto.BookingStatusRequest;
@@ -12,14 +13,15 @@ import com.techup.pet_sitter.repository.PaymentRepository;
 import com.techup.pet_sitter.repository.PetRepository;
 import com.techup.pet_sitter.repository.UserRepository;
 import com.techup.pet_sitter.service.OwnerProfileRules;
+import com.techup.pet_sitter.service.BookingAdminService;
 import com.techup.pet_sitter.service.SitterApprovalService;
 import com.techup.pet_sitter.service.SitterBookingService;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -42,6 +44,7 @@ public class BookingController {
     private final PetRepository pets;
     private final BookingPetRepository bookingPets;
     private final com.techup.pet_sitter.repository.SitterProfileRepository profiles;
+    private final BookingAdminService bookingAdminService;
 
     @org.springframework.beans.factory.annotation.Value("${stripe.secret.key:}")
     private String stripeSecretKey;
@@ -49,7 +52,8 @@ public class BookingController {
     public BookingController(BookingRepository bookings, UserRepository users, SitterApprovalService approvals,
                              SitterBookingService sitterBookings, PaymentRepository payments,
                              PetRepository pets, BookingPetRepository bookingPets,
-                             com.techup.pet_sitter.repository.SitterProfileRepository profiles) {
+                             com.techup.pet_sitter.repository.SitterProfileRepository profiles,
+                             BookingAdminService bookingAdminService) {
         this.bookings = bookings;
         this.users = users;
         this.approvals = approvals;
@@ -58,6 +62,7 @@ public class BookingController {
         this.pets = pets;
         this.bookingPets = bookingPets;
         this.profiles = profiles;
+        this.bookingAdminService = bookingAdminService;
     }
 
     @GetMapping("/sitter")
@@ -208,5 +213,10 @@ public class BookingController {
         payments.save(payment);
 
         return new BookingResponse(saved.getId(), saved.getStatus(), saved.getTransactionNo());
+    }
+
+    @GetMapping("/admin/sitter/{sitterId}")
+    List<BookingAdminListItem> listBySitter(@PathVariable UUID sitterId) {
+        return bookingAdminService.listForSitter(sitterId);
     }
 }
