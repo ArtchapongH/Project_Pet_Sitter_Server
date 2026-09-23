@@ -30,6 +30,9 @@ public class OwnerProfileService {
         if (users.existsByPhoneAndIdNot(request.phone().trim(), userId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This phone number is already registered");
         }
+        if (user.getRole() == null || user.getRole().isBlank()) {
+            user.setRole("owner");
+        }
         user.setName(request.name().trim());
         user.setPhone(request.phone().trim());
         user.setIdNumber(blankToNull(request.idNumber()));
