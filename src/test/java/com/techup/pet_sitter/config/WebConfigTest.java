@@ -28,7 +28,7 @@ class WebConfigTest {
     @BeforeEach
     void setUp() {
         MockEnvironment environment = new MockEnvironment()
-                .withProperty("app.cors.allowed-origin-patterns", "https://pet-sitter-client-one.vercel.app");
+                .withProperty("app.cors.allowed-origin-patterns", "http://localhost:*");
         context = new AnnotationConfigWebApplicationContext();
         context.setEnvironment(environment);
         context.setServletContext(new MockServletContext());
