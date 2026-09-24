@@ -82,7 +82,8 @@ public class AuthSyncService {
                 user.getDateOfBirth(),
                 user.getAvatarUrl(),
                 OwnerProfileRules.isComplete(user),
-                Boolean.TRUE.equals(user.isBanned())
+                Boolean.TRUE.equals(user.isBanned()),
+                user.isAdmin()
         );
     }
 

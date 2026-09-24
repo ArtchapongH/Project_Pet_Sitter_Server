@@ -1,13 +1,13 @@
 package com.techup.pet_sitter.controller;
 
 import com.techup.pet_sitter.entity.Location;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/locations")
-@CrossOrigin(origins = "http://localhost:5173")
 public class LocationController {
 
     @GetMapping
@@ -40,6 +40,7 @@ public class LocationController {
     }
 
     @PostMapping
+    @PreAuthorize("@adminAccess.isAdmin(authentication)")
     public Location createLocation(
             @RequestBody Location location
     ) {
