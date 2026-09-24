@@ -44,7 +44,7 @@ public class OwnerProfileService {
     }
 
     private AuthMeResponse toMe(User user) {
-        String role = sitterProfiles.existsById(user.getId()) ? "sitter" : "owner";
+        String role = sitterProfiles.existsById(user.getId()) ? "pet-sitter" : "owner";
         return new AuthMeResponse(
                 user.getId(),
                 role,

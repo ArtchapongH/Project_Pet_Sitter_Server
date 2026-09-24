@@ -34,8 +34,9 @@ public class AuthSyncService {
             user.setVerified(false);
             user.setBanned(false);
         }
-        String accountRole = "sitter".equals(request.role()) ? "sitter" : "owner";
-        if (creating || user.getRole() == null || user.getRole().isBlank()) {
+        boolean petSitter = "pet-sitter".equals(request.role()) || "sitter".equals(request.role());
+        String accountRole = petSitter ? "pet-sitter" : "owner";
+        if (petSitter || creating || user.getRole() == null || user.getRole().isBlank()) {
             user.setRole(accountRole);
         }
         users.findByEmailIgnoreCase(email).ifPresent(existing -> {
@@ -55,7 +56,7 @@ public class AuthSyncService {
         user.setEmail(email);
         user.setName(request.name().trim());
         User saved = users.save(user);
-        if ("sitter".equals(request.role()) && !sitterProfiles.existsById(saved.getId())) {
+        if (petSitter && !sitterProfiles.existsById(saved.getId())) {
             sitterProfiles.save(newSitterProfile(saved));
         }
         OwnerProfileRules.requireNotBanned(saved);
@@ -71,7 +72,7 @@ public class AuthSyncService {
     }
 
     private AuthMeResponse toMe(User user) {
-        String role = sitterProfiles.existsById(user.getId()) ? "sitter" : "owner";
+        String role = sitterProfiles.existsById(user.getId()) ? "pet-sitter" : "owner";
         return new AuthMeResponse(
                 user.getId(),
                 role,
