@@ -40,6 +40,9 @@ public class User {
     @Column(name = "is_admin", nullable = false)
     private boolean isAdmin;
 
+        @Column(name = "role", nullable = false)
+        private String role;
+
     @Column(name = "is_verified", nullable = false)
     private boolean isVerified;
 
@@ -50,7 +53,7 @@ public class User {
     private OffsetDateTime updatedAt;
 
     @Column(name = "is_banned")
-    private boolean isBanned;
+    private Boolean isBanned;
 
     public User() {
     }
@@ -131,6 +134,14 @@ public class User {
         isAdmin = admin;
     }
 
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
+
     public boolean isVerified() {
         return isVerified;
     }
@@ -155,11 +166,11 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
-    public boolean isBanned() {
+    public Boolean isBanned() {
         return isBanned;
     }
 
-    public void setBanned(boolean banned) {
+    public void setBanned(Boolean banned) {
         isBanned = banned;
     }
 }

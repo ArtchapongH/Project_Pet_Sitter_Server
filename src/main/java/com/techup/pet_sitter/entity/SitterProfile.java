@@ -10,6 +10,8 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -89,12 +91,13 @@ public class SitterProfile {
     private boolean isListed;
 
     @Column(name = "pending_profile", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String pendingProfile;
 
     @Column(name = "account_name")
     private String accountName;
 
-    @Column(name = "book_bank_image_url")
+    @Column(name = "book_bank_image_url", columnDefinition = "text")
     private String bookBankImageUrl;
 
     @Column(name = "bank_code")
@@ -102,6 +105,9 @@ public class SitterProfile {
 
     @Column(name = "rejection_reason")
     private String rejectionReason;
+
+    @Column(name = "pet_sitter_state", nullable = true)
+    private Integer pet_sitter_state;
 
     public SitterProfile() {
     }
@@ -332,5 +338,13 @@ public class SitterProfile {
 
     public void setRejectionReason(String rejectionReason) {
         this.rejectionReason = rejectionReason;
+    }
+
+    public Integer getPet_sitter_state() {
+        return pet_sitter_state;
+    }
+
+    public void setPet_sitter_state(Integer pet_sitter_state) {
+        this.pet_sitter_state = pet_sitter_state;
     }
 }
