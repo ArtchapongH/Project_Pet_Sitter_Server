@@ -2,6 +2,7 @@ package com.techup.pet_sitter.service;
 
 import com.techup.pet_sitter.dto.ProfilePayload;
 import com.techup.pet_sitter.dto.ProfileResponse;
+import com.techup.pet_sitter.entity.PetType;
 import com.techup.pet_sitter.entity.SitterProfile;
 import com.techup.pet_sitter.entity.User;
 import com.techup.pet_sitter.repository.PetTypeRepository;
@@ -89,6 +90,33 @@ class SitterApprovalServiceTest {
     }
 
     @Test
+    void verifiedSitterCanSubmitFullProfileAndBecomeApprovedAndListed() {
+        User sitter = user();
+        SitterProfile profile = profile(sitter, "Verified", false);
+        ProfilePayload full = fullPayload();
+        PetType dog = new PetType();
+        dog.setId(1);
+        dog.setName("Dog");
+
+        when(users.findById(sitterId)).thenReturn(Optional.of(sitter));
+        when(profiles.findForUpdate(sitterId)).thenReturn(Optional.of(profile));
+        when(json.writeValueAsString(full)).thenReturn("{full}");
+        when(json.readValue("{full}", ProfilePayload.class)).thenReturn(full);
+        when(petTypes.findByName("Dog")).thenReturn(Optional.of(dog));
+
+        ProfileResponse waiting = service.submit(sitterId, full);
+        assertEquals("Waiting for approve", waiting.approvalStatus());
+        assertFalse(waiting.listed());
+
+        ProfileResponse approved = service.approve(adminId, sitterId);
+        assertEquals("Approved", approved.approvalStatus());
+        assertTrue(approved.listed());
+        assertEquals("Happy Paws", profile.getDisplayName());
+        assertEquals("Bangkok", profile.getProvince());
+        assertNull(profile.getPendingProfile());
+    }
+
+    @Test
     void rejectionKeepsLiveDataAndRemovesListing() {
         User sitter = user();
         SitterProfile profile = profile(sitter, "Waiting for approve", true);
@@ -153,6 +181,15 @@ class SitterApprovalServiceTest {
                 "new name", "0812345678", "new@example.com", "0–1 year", LocalDate.of(1990, 1, 1),
                 "1234567890123", null, "intro", null, List.of(), null, null, List.of(), null,
                 null, null, null, null, null, null, null, null, null, null, null
+        );
+    }
+
+    private ProfilePayload fullPayload() {
+        return new ProfilePayload(
+                "new name", "0812345678", "new@example.com", "1–3 years", LocalDate.of(1990, 1, 1),
+                "1234567890123", null, "intro", "Happy Paws", List.of("Dog"), "Boarding", "Home",
+                List.of(), "123 Main Road", "Pathum Wan", "Lumphini", "Bangkok", "10330",
+                new BigDecimal("13.7440"), new BigDecimal("100.5400"), null, null, null, null, null
         );
     }
 }

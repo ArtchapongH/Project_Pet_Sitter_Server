@@ -19,7 +19,8 @@ public class WebConfig implements WebMvcConfigurer {
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
                 .toArray(String[]::new);
-        // An empty value disables cross-origin access; same-origin /api proxy requests still work.
+        // Vercel forwards browser headers through its external rewrite, so the production
+        // frontend origin must still be allowed by Spring even though the browser calls /api.
         if (origins.length == 0) return;
 
         registry.addMapping("/api/**")

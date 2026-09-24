@@ -111,6 +111,14 @@ public class SitterApprovalService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public ProfileResponse adminProfile(UUID adminId, UUID sitterId) {
+        requireAdmin(adminId);
+        return profiles.findByIdWithUser(sitterId)
+                .map(this::response)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sitter profile not found"));
+    }
+
     @Transactional
     public ProfileResponse approve(UUID adminId, UUID sitterId) {
         requireAdmin(adminId);

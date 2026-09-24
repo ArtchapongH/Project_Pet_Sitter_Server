@@ -51,6 +51,14 @@ public class SitterApprovalController {
         return approvals.approvalQueue(JwtUser.id(jwt));
     }
 
+    @GetMapping("/admin/sitter-approvals/{sitterId}")
+    ProfileResponse adminProfile(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID sitterId
+    ) {
+        return approvals.adminProfile(JwtUser.id(jwt), sitterId);
+    }
+
     @PatchMapping("/admin/sitter-approvals/approve")
     ProfileResponse approve(
             @AuthenticationPrincipal Jwt jwt,
