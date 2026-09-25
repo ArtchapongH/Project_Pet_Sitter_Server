@@ -2,6 +2,9 @@ package com.techup.pet_sitter.service;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -23,6 +26,24 @@ public class SupabaseStorageService {
     private final String bucket;
     private final String apiKey;
 
+    static String storageType(String contentType) {
+        if (contentType == null || contentType.isBlank() || "image/jpg".equals(contentType) || "image/pjpeg".equals(contentType)) {
+            return "image/jpeg";
+        }
+        return contentType;
+    }
+
+    static String authorizationBearer(String apiKey, String userToken) {
+        if (userToken != null && userToken.chars().filter(ch -> ch == '.').count() == 2) return userToken;
+        return apiKey;
+    }
+
+    private String currentUserToken() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) return jwt.getTokenValue();
+        return null;
+    }
+
     public SupabaseStorageService(
             @Value("${supabase.url}") String supabaseUrl,
             @Value("${supabase.bucket}") String bucket,
@@ -40,7 +61,7 @@ public class SupabaseStorageService {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An image file is required");
         }
-        String contentType = file.getContentType() == null ? "application/octet-stream" : file.getContentType();
+        String contentType = storageType(file.getContentType());
         if (!IMAGE_TYPES.contains(contentType)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only jpeg, png, webp or gif images are allowed");
         }
@@ -55,7 +76,7 @@ public class SupabaseStorageService {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(supabaseUrl + "/storage/v1/object/" + bucket + "/" + path))
                     .timeout(Duration.ofSeconds(20))
-                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Authorization", "Bearer " + authorizationBearer(apiKey, currentUserToken()))
                     .header("apikey", apiKey)
                     .header("Content-Type", contentType)
                     .header("x-upsert", "true")
