@@ -3,6 +3,7 @@ package com.techup.pet_sitter.service;
 import com.techup.pet_sitter.dto.ProfilePayload;
 import com.techup.pet_sitter.dto.ProfileResponse;
 import com.techup.pet_sitter.entity.PetType;
+import com.techup.pet_sitter.entity.SitterPhoto;
 import com.techup.pet_sitter.entity.SitterProfile;
 import com.techup.pet_sitter.entity.User;
 import com.techup.pet_sitter.repository.PetTypeRepository;
@@ -30,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -49,6 +51,7 @@ class SitterApprovalServiceTest {
 
     @BeforeEach
     void repositoryDefaults() {
+        reset(json);
         when(sitterPetTypes.findBySitter_UserId(sitterId)).thenReturn(List.of());
         when(photos.findBySitter_UserIdOrderBySortOrder(sitterId)).thenReturn(List.of());
         when(profiles.save(any(SitterProfile.class))).thenAnswer(call -> call.getArgument(0));
@@ -164,18 +167,55 @@ class SitterApprovalServiceTest {
     }
 
     @Test
-    void submissionRejectsInlineBase64Images() {
+    void submissionDropsUnusableImagesAndStillRegisters() {
         User sitter = user();
         when(users.findById(sitterId)).thenReturn(Optional.of(sitter));
         when(profiles.findForUpdate(sitterId)).thenReturn(Optional.empty());
+        when(json.writeValueAsString(any(ProfilePayload.class))).thenReturn("{}");
+        when(json.readValue("{}", ProfilePayload.class)).thenReturn(basicPayload());
         ProfilePayload payload = new ProfilePayload(
                 "new name", "0812345678", "new@example.com", "0–1 year", LocalDate.of(1990, 1, 1),
                 "1234567890123", "data:image/webp;base64,AAAA", "intro", null, List.of(), null, null,
-                List.of(), null, null, null, null, null, null, null, null, null, null, null, null
+                List.of("/image/dog1.jpg"), null, null, null, null, null, null, null, null, null, null, null, null
         );
 
-        assertThrows(ResponseStatusException.class, () -> service.submit(sitterId, payload));
+        ProfileResponse result = service.submit(sitterId, payload);
+        ArgumentCaptor<ProfilePayload> stored = ArgumentCaptor.forClass(ProfilePayload.class);
+        verify(json).writeValueAsString(stored.capture());
+
+        assertEquals("Waiting for verify", result.approvalStatus());
+        assertNull(stored.getValue().avatarUrl());
+        assertTrue(stored.getValue().photoUrls().isEmpty());
     }
+
+    @Test
+    void httpsAvatarAndGallerySurviveSecondApproval() {
+        User sitter = user();
+        SitterProfile profile = profile(sitter, "Verified", false);
+        ProfilePayload full = imagePayload();
+        PetType dog = new PetType();
+        dog.setId(1);
+        dog.setName("Dog");
+
+        when(users.findById(sitterId)).thenReturn(Optional.of(sitter));
+        when(profiles.findForUpdate(sitterId)).thenReturn(Optional.of(profile));
+        when(json.writeValueAsString(full)).thenReturn("{images}");
+        when(json.readValue("{images}", ProfilePayload.class)).thenReturn(full);
+        when(petTypes.findByName("Dog")).thenReturn(Optional.of(dog));
+
+        ProfileResponse waiting = service.submit(sitterId, full);
+        assertEquals("https://cdn.example/avatar.jpg", waiting.pendingProfile().avatarUrl());
+        assertEquals(List.of("https://cdn.example/gallery.jpg"), waiting.pendingProfile().photoUrls());
+
+        service.approve(adminId, sitterId);
+
+        assertEquals("https://cdn.example/avatar.jpg", sitter.getAvatarUrl());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<SitterPhoto>> savedPhotos = ArgumentCaptor.forClass(List.class);
+        verify(photos).saveAll(savedPhotos.capture());
+        assertEquals("https://cdn.example/gallery.jpg", savedPhotos.getValue().getFirst().getPhotoUrl());
+    }
+
 
     private User user() {
         User sitter = new User();
@@ -201,6 +241,15 @@ class SitterApprovalServiceTest {
                 "new name", "0812345678", "new@example.com", "0–1 year", LocalDate.of(1990, 1, 1),
                 "1234567890123", null, "intro", null, List.of(), null, null, List.of(), null,
                 null, null, null, null, null, null, null, null, null, null, null
+        );
+    }
+
+    private ProfilePayload imagePayload() {
+        return new ProfilePayload(
+                "new name", "0812345678", "new@example.com", "1–3 years", LocalDate.of(1990, 1, 1),
+                "1234567890123", "https://cdn.example/avatar.jpg", "intro", "Happy Paws", List.of("Dog"),
+                "Boarding", "Home", List.of("https://cdn.example/gallery.jpg"), "123 Main Road",
+                "Pathum Wan", "Lumphini", "Bangkok", "10330", null, null, null, null, null, null, null
         );
     }
 

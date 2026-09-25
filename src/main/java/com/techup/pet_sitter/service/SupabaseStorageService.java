@@ -17,7 +17,7 @@ import java.util.UUID;
 
 @Service
 public class SupabaseStorageService {
-    private static final Set<String> IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp", "image/gif");
+    private static final Set<String> IMAGE_TYPES = Set.of("image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif");
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private final String supabaseUrl;
     private final String bucket;
