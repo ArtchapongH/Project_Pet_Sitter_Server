@@ -13,6 +13,7 @@ import com.techup.pet_sitter.repository.SitterProfileRepository;
 import com.techup.pet_sitter.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
 
@@ -29,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SitterApprovalServiceTest {
@@ -65,8 +67,11 @@ class SitterApprovalServiceTest {
         when(json.readValue("{}", ProfilePayload.class)).thenReturn(basicPayload());
 
         ProfileResponse result = service.submit(sitterId, basicPayload());
+        ArgumentCaptor<SitterProfile> savedProfile = ArgumentCaptor.forClass(SitterProfile.class);
+        verify(profiles).save(savedProfile.capture());
 
         assertEquals("Waiting for verify", result.approvalStatus());
+        assertEquals(2, savedProfile.getValue().getPet_sitter_state());
         assertFalse(result.listed());
         assertEquals("old name", sitter.getName());
         assertEquals("new name", result.pendingProfile().fullName());
@@ -106,6 +111,7 @@ class SitterApprovalServiceTest {
 
         ProfileResponse waiting = service.submit(sitterId, full);
         assertEquals("Waiting for approve", waiting.approvalStatus());
+        assertEquals(3, profile.getPet_sitter_state());
         assertFalse(waiting.listed());
 
         ProfileResponse approved = service.approve(adminId, sitterId);
@@ -155,6 +161,20 @@ class SitterApprovalServiceTest {
         assertEquals(new BigDecimal("100.50180000"), result.longitude());
         profile.setListed(false);
         assertThrows(ResponseStatusException.class, () -> service.publicDetail(sitterId));
+    }
+
+    @Test
+    void submissionRejectsInlineBase64Images() {
+        User sitter = user();
+        when(users.findById(sitterId)).thenReturn(Optional.of(sitter));
+        when(profiles.findForUpdate(sitterId)).thenReturn(Optional.empty());
+        ProfilePayload payload = new ProfilePayload(
+                "new name", "0812345678", "new@example.com", "0–1 year", LocalDate.of(1990, 1, 1),
+                "1234567890123", "data:image/webp;base64,AAAA", "intro", null, List.of(), null, null,
+                List.of(), null, null, null, null, null, null, null, null, null, null, null, null
+        );
+
+        assertThrows(ResponseStatusException.class, () -> service.submit(sitterId, payload));
     }
 
     private User user() {

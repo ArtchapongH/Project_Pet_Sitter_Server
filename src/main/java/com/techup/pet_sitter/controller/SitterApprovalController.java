@@ -7,8 +7,10 @@ import com.techup.pet_sitter.dto.ProfileResponse;
 import com.techup.pet_sitter.dto.PublicReviewResponse;
 import com.techup.pet_sitter.dto.PublicSitterDetailResponse;
 import com.techup.pet_sitter.dto.RejectRequest;
+import com.techup.pet_sitter.dto.UploadResponse;
 import com.techup.pet_sitter.security.JwtUser;
 import com.techup.pet_sitter.service.SitterApprovalService;
+import com.techup.pet_sitter.service.SupabaseStorageService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -28,9 +31,11 @@ import java.util.UUID;
 @RequestMapping("/api")
 public class SitterApprovalController {
     private final SitterApprovalService approvals;
+    private final SupabaseStorageService storage;
 
-    public SitterApprovalController(SitterApprovalService approvals) {
+    public SitterApprovalController(SitterApprovalService approvals, SupabaseStorageService storage) {
         this.approvals = approvals;
+        this.storage = storage;
     }
 
     @GetMapping("/sitter/profile")
@@ -44,6 +49,16 @@ public class SitterApprovalController {
             @RequestBody ProfilePayload payload
     ) {
         return approvals.submit(JwtUser.id(jwt), payload);
+    }
+
+    @PostMapping("/sitter/profile/media")
+    UploadResponse uploadProfileMedia(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(defaultValue = "profile") String folder
+    ) {
+        String safeFolder = "gallery".equals(folder) ? "gallery" : "profile";
+        return new UploadResponse(storage.uploadImage(JwtUser.id(jwt), safeFolder, file));
     }
 
     @GetMapping("/admin/sitter-approvals")

@@ -95,6 +95,7 @@ public class SitterApprovalService {
 
         profile.setPendingProfile(write(payload));
         profile.setApprovalStatus(next.value());
+        profile.setPet_sitter_state(current == ApprovalStatus.UNVERIFIED ? 2 : 3);
         profile.setRejectionReason(null);
         if (current != ApprovalStatus.APPROVED) profile.setListed(false);
         return response(profiles.save(profile));
@@ -125,6 +126,7 @@ public class SitterApprovalService {
         SitterProfile profile = requireProfileForUpdate(sitterId);
         ApprovalStatus current = ApprovalStatus.from(profile.getApprovalStatus());
         ProfilePayload pending = readRequired(profile.getPendingProfile());
+        validate(pending, current == ApprovalStatus.WAITING_FOR_VERIFY);
 
         ApprovalStatus next;
         try {
@@ -140,6 +142,7 @@ public class SitterApprovalService {
             applyAll(profile, pending);
         }
         profile.setApprovalStatus(next.value());
+        profile.setPet_sitter_state(current == ApprovalStatus.WAITING_FOR_VERIFY ? 2 : 3);
         profile.setListed(next == ApprovalStatus.APPROVED);
         profile.setPendingProfile(null);
         profile.setRejectionReason(null);
@@ -153,13 +156,15 @@ public class SitterApprovalService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rejection reason is required");
         }
         SitterProfile profile = requireProfileForUpdate(sitterId);
+        ApprovalStatus current = ApprovalStatus.from(profile.getApprovalStatus());
         ApprovalStatus next;
         try {
-            next = ApprovalStatus.from(profile.getApprovalStatus()).afterReject();
+            next = current.afterReject();
         } catch (IllegalStateException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage());
         }
         profile.setApprovalStatus(next.value());
+        profile.setPet_sitter_state(current == ApprovalStatus.WAITING_FOR_VERIFY ? 2 : 3);
         profile.setListed(false);
         profile.setRejectionReason(reason.trim());
         return response(profiles.save(profile));
@@ -363,6 +368,7 @@ public class SitterApprovalService {
         profile.setReviewCount(0);
         profile.setApprovalStatus(ApprovalStatus.UNVERIFIED.value());
         profile.setListed(false);
+        profile.setPet_sitter_state(1);
         return profile;
     }
 
@@ -373,6 +379,8 @@ public class SitterApprovalService {
         requireText(payload.experienceYears(), "Experience");
         if (payload.dateOfBirth() == null) badRequest("Date of birth is required");
         requireText(payload.idNumber(), "ID number");
+        requirePublicUrl(payload.avatarUrl(), "Profile image");
+        payload.photoUrls().forEach(url -> requirePublicUrl(url, "Gallery image"));
         if (firstRound) return;
         requireText(payload.displayName(), "Pet sitter name");
         if (payload.petTypes().isEmpty()) badRequest("At least one pet type is required");
@@ -528,6 +536,12 @@ public class SitterApprovalService {
 
     private void requireText(String value, String field) {
         if (value == null || value.isBlank()) badRequest(field + " is required");
+    }
+
+    private void requirePublicUrl(String value, String field) {
+        if (value != null && !value.isBlank() && !value.startsWith("https://")) {
+            badRequest(field + " must be an uploaded URL");
+        }
     }
 
     private void badRequest(String message) {

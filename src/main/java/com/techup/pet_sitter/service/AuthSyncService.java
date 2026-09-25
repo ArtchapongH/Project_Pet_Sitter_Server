@@ -98,6 +98,7 @@ public class AuthSyncService {
         profile.setReviewCount(0);
         profile.setApprovalStatus(ApprovalStatus.UNVERIFIED.value());
         profile.setListed(false);
+        profile.setPet_sitter_state(1);
         return profile;
     }
 }
