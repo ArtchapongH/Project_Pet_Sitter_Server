@@ -38,6 +38,13 @@ public class SupabaseStorageService {
         return apiKey;
     }
 
+    static String storageErrorMessage(int statusCode) {
+        if (statusCode == 401 || statusCode == 403) {
+            return "Image upload is not allowed by the Supabase Storage policy";
+        }
+        return "Could not upload the image to Supabase Storage (status " + statusCode + ")";
+    }
+
     private String currentUserToken() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) return jwt.getTokenValue();
@@ -79,12 +86,11 @@ public class SupabaseStorageService {
                     .header("Authorization", "Bearer " + authorizationBearer(apiKey, currentUserToken()))
                     .header("apikey", apiKey)
                     .header("Content-Type", contentType)
-                    .header("x-upsert", "true")
                     .POST(HttpRequest.BodyPublishers.ofByteArray(file.getBytes()))
                     .build();
             HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 300) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not upload the image");
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, storageErrorMessage(response.statusCode()));
             }
             return supabaseUrl + "/storage/v1/object/public/" + bucket + "/" + path;
         } catch (InterruptedException exception) {

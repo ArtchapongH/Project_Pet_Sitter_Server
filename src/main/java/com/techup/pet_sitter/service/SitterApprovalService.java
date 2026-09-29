@@ -380,6 +380,7 @@ public class SitterApprovalService {
         requireText(payload.experienceYears(), "Experience");
         if (payload.dateOfBirth() == null) badRequest("Date of birth is required");
         requireText(payload.idNumber(), "ID number");
+        if (payload.photoUrls().size() > 10) badRequest("Image gallery accepts at most 10 images");
         if (firstRound) return;
         requireText(payload.displayName(), "Pet sitter name");
         if (payload.petTypes().isEmpty()) badRequest("At least one pet type is required");

@@ -216,6 +216,30 @@ class SitterApprovalServiceTest {
         assertEquals("https://cdn.example/gallery.jpg", savedPhotos.getValue().getFirst().getPhotoUrl());
     }
 
+    @Test
+    void fullProfileRejectsMoreThanTenGalleryImages() {
+        User sitter = user();
+        SitterProfile profile = profile(sitter, "Verified", false);
+        List<String> photos = java.util.stream.IntStream.rangeClosed(1, 11)
+                .mapToObj(index -> "https://cdn.example/gallery-" + index + ".jpg")
+                .toList();
+        ProfilePayload payload = new ProfilePayload(
+                "new name", "0812345678", "new@example.com", "1–3 years", LocalDate.of(1990, 1, 1),
+                "1234567890123", null, "intro", "Happy Paws", List.of("Dog"), "Boarding", "Home",
+                photos, "123 Main Road", "Pathum Wan", "Lumphini", "Bangkok", "10330",
+                null, null, null, null, null, null, null
+        );
+
+        when(users.findById(sitterId)).thenReturn(Optional.of(sitter));
+        when(profiles.findForUpdate(sitterId)).thenReturn(Optional.of(profile));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> service.submit(sitterId, payload)
+        );
+        assertEquals("Image gallery accepts at most 10 images", exception.getReason());
+    }
+
 
     private User user() {
         User sitter = new User();

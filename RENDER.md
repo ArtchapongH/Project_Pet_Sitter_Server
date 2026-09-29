@@ -21,4 +21,6 @@ Use the PostgreSQL internal connection details when the database is also on Rend
 
 `SUPABASE_URL` must identify the same Supabase project as the frontend's `VITE_SUPABASE_URL`. Otherwise the backend will reject access tokens issued to the frontend.
 
+The `uploads` bucket must be public and must allow authenticated users to insert files only below their own user-id folder. Run `SUPABASE_STORAGE_POLICY.sql` once in the Supabase SQL Editor. Without that policy, profile and gallery uploads return `403`, and the resulting URLs cannot be saved in `pending_profile`.
+
 The Docker build skips test execution because the current Spring context test requires a configured database and Supabase URL. Run the project checks separately in CI with a test configuration.
