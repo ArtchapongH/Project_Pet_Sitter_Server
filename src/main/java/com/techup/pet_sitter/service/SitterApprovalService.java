@@ -362,7 +362,6 @@ public class SitterApprovalService {
     private SitterProfile newProfile(User user) {
         SitterProfile profile = new SitterProfile();
         profile.setUser(user);
-        profile.setUserId(user.getId());
         profile.setDisplayName(user.getName() == null ? "New sitter" : user.getName());
         profile.setExperienceYears("0–1 year");
         profile.setRatingAvg(BigDecimal.ZERO);

@@ -1,5 +1,6 @@
 package com.techup.pet_sitter.config;
 
+import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,6 +33,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/sitters", "/api/sitters/**", "/api/locations").permitAll()

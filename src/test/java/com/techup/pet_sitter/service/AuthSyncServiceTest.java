@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -24,6 +25,7 @@ class AuthSyncServiceTest {
         AuthSyncService service = new AuthSyncService(users, profiles);
         UUID userId = UUID.randomUUID();
         AtomicReference<User> savedUser = new AtomicReference<>();
+        AtomicReference<SitterProfile> savedProfile = new AtomicReference<>();
 
         when(users.findById(userId)).thenReturn(Optional.empty());
         when(users.findByEmailIgnoreCase("sitter@example.com")).thenReturn(Optional.empty());
@@ -34,7 +36,10 @@ class AuthSyncServiceTest {
             return user;
         });
         when(profiles.existsById(userId)).thenReturn(false, true);
-        when(profiles.save(any(SitterProfile.class))).thenAnswer(call -> call.getArgument(0));
+        when(profiles.save(any(SitterProfile.class))).thenAnswer(call -> {
+            savedProfile.set(call.getArgument(0));
+            return call.getArgument(0);
+        });
 
         var result = service.bootstrap(
                 userId,
@@ -44,5 +49,7 @@ class AuthSyncServiceTest {
 
         assertEquals("pet-sitter", result.role());
         assertEquals("pet-sitter", savedUser.get().getRole());
+        assertEquals(userId, savedProfile.get().getUser().getId());
+        assertNull(savedProfile.get().getUserId());
     }
 }
