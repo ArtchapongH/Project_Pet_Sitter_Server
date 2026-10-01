@@ -34,6 +34,11 @@ public class AuthSyncService {
             user.setVerified(false);
             user.setBanned(false);
         }
+        boolean petSitter = "pet-sitter".equals(request.role()) || "sitter".equals(request.role());
+        String accountRole = petSitter ? "pet-sitter" : "owner";
+        if (petSitter || creating || user.getRole() == null || user.getRole().isBlank()) {
+            user.setRole(accountRole);
+        }
         users.findByEmailIgnoreCase(email).ifPresent(existing -> {
             if (!existing.getId().equals(userId)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "This email is already registered");
@@ -51,7 +56,7 @@ public class AuthSyncService {
         user.setEmail(email);
         user.setName(request.name().trim());
         User saved = users.save(user);
-        if ("sitter".equals(request.role()) && !sitterProfiles.existsById(saved.getId())) {
+        if (petSitter && !sitterProfiles.existsById(saved.getId())) {
             sitterProfiles.save(newSitterProfile(saved));
         }
         OwnerProfileRules.requireNotBanned(saved);
@@ -67,7 +72,7 @@ public class AuthSyncService {
     }
 
     private AuthMeResponse toMe(User user) {
-        String role = sitterProfiles.existsById(user.getId()) ? "sitter" : "owner";
+        String role = sitterProfiles.existsById(user.getId()) ? "pet-sitter" : "owner";
         return new AuthMeResponse(
                 user.getId(),
                 role,
@@ -78,20 +83,21 @@ public class AuthSyncService {
                 user.getDateOfBirth(),
                 user.getAvatarUrl(),
                 OwnerProfileRules.isComplete(user),
-                Boolean.TRUE.equals(user.isBanned())
+                Boolean.TRUE.equals(user.isBanned()),
+                user.isAdmin()
         );
     }
 
     private SitterProfile newSitterProfile(User user) {
         SitterProfile profile = new SitterProfile();
         profile.setUser(user);
-        profile.setUserId(user.getId());
         profile.setDisplayName(user.getName() == null || user.getName().isBlank() ? "New sitter" : user.getName());
         profile.setExperienceYears("0–1 year");
         profile.setRatingAvg(BigDecimal.ZERO);
         profile.setReviewCount(0);
         profile.setApprovalStatus(ApprovalStatus.UNVERIFIED.value());
         profile.setListed(false);
+        profile.setPet_sitter_state(1);
         return profile;
     }
 }

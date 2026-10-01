@@ -84,6 +84,7 @@ public class SitterApprovalService {
         User user = requireUser(userId);
         SitterProfile profile = profiles.findForUpdate(userId).orElseGet(() -> newProfile(user));
         ApprovalStatus current = ApprovalStatus.from(profile.getApprovalStatus());
+        payload = keepUploadedImages(payload);
         validate(payload, current == ApprovalStatus.UNVERIFIED);
 
         ApprovalStatus next;
@@ -95,6 +96,7 @@ public class SitterApprovalService {
 
         profile.setPendingProfile(write(payload));
         profile.setApprovalStatus(next.value());
+        profile.setPet_sitter_state(current == ApprovalStatus.UNVERIFIED ? 2 : 3);
         profile.setRejectionReason(null);
         if (current != ApprovalStatus.APPROVED) profile.setListed(false);
         return response(profiles.save(profile));
@@ -111,12 +113,21 @@ public class SitterApprovalService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public ProfileResponse adminProfile(UUID adminId, UUID sitterId) {
+        requireAdmin(adminId);
+        return profiles.findByIdWithUser(sitterId)
+                .map(this::response)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sitter profile not found"));
+    }
+
     @Transactional
     public ProfileResponse approve(UUID adminId, UUID sitterId) {
         requireAdmin(adminId);
         SitterProfile profile = requireProfileForUpdate(sitterId);
         ApprovalStatus current = ApprovalStatus.from(profile.getApprovalStatus());
-        ProfilePayload pending = readRequired(profile.getPendingProfile());
+        ProfilePayload pending = keepUploadedImages(readRequired(profile.getPendingProfile()));
+        validate(pending, current == ApprovalStatus.WAITING_FOR_VERIFY);
 
         ApprovalStatus next;
         try {
@@ -132,6 +143,7 @@ public class SitterApprovalService {
             applyAll(profile, pending);
         }
         profile.setApprovalStatus(next.value());
+        profile.setPet_sitter_state(current == ApprovalStatus.WAITING_FOR_VERIFY ? 2 : 3);
         profile.setListed(next == ApprovalStatus.APPROVED);
         profile.setPendingProfile(null);
         profile.setRejectionReason(null);
@@ -145,13 +157,15 @@ public class SitterApprovalService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rejection reason is required");
         }
         SitterProfile profile = requireProfileForUpdate(sitterId);
+        ApprovalStatus current = ApprovalStatus.from(profile.getApprovalStatus());
         ApprovalStatus next;
         try {
-            next = ApprovalStatus.from(profile.getApprovalStatus()).afterReject();
+            next = current.afterReject();
         } catch (IllegalStateException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, exception.getMessage());
         }
         profile.setApprovalStatus(next.value());
+        profile.setPet_sitter_state(current == ApprovalStatus.WAITING_FOR_VERIFY ? 2 : 3);
         profile.setListed(false);
         profile.setRejectionReason(reason.trim());
         return response(profiles.save(profile));
@@ -348,13 +362,13 @@ public class SitterApprovalService {
     private SitterProfile newProfile(User user) {
         SitterProfile profile = new SitterProfile();
         profile.setUser(user);
-        profile.setUserId(user.getId());
         profile.setDisplayName(user.getName() == null ? "New sitter" : user.getName());
         profile.setExperienceYears("0–1 year");
         profile.setRatingAvg(BigDecimal.ZERO);
         profile.setReviewCount(0);
         profile.setApprovalStatus(ApprovalStatus.UNVERIFIED.value());
         profile.setListed(false);
+        profile.setPet_sitter_state(1);
         return profile;
     }
 
@@ -365,6 +379,7 @@ public class SitterApprovalService {
         requireText(payload.experienceYears(), "Experience");
         if (payload.dateOfBirth() == null) badRequest("Date of birth is required");
         requireText(payload.idNumber(), "ID number");
+        if (payload.photoUrls().size() > 10) badRequest("Image gallery accepts at most 10 images");
         if (firstRound) return;
         requireText(payload.displayName(), "Pet sitter name");
         if (payload.petTypes().isEmpty()) badRequest("At least one pet type is required");
@@ -520,6 +535,21 @@ public class SitterApprovalService {
 
     private void requireText(String value, String field) {
         if (value == null || value.isBlank()) badRequest(field + " is required");
+    }
+
+    private ProfilePayload keepUploadedImages(ProfilePayload payload) {
+        boolean avatarOk = payload.avatarUrl() == null || payload.avatarUrl().isBlank() || payload.avatarUrl().startsWith("https://");
+        boolean photosOk = payload.photoUrls().stream().allMatch(url -> url != null && url.startsWith("https://"));
+        if (avatarOk && photosOk) return payload;
+        String avatar = avatarOk ? payload.avatarUrl() : null;
+        List<String> photos = payload.photoUrls().stream().filter(url -> url != null && url.startsWith("https://")).toList();
+        return new ProfilePayload(
+                payload.fullName(), payload.phone(), payload.email(), payload.experienceYears(), payload.dateOfBirth(),
+                payload.idNumber(), avatar, payload.introduction(), payload.displayName(), payload.petTypes(),
+                payload.services(), payload.myPlace(), photos, payload.addressDetail(), payload.district(),
+                payload.subDistrict(), payload.province(), payload.postCode(), payload.latitude(), payload.longitude(),
+                payload.bankName(), payload.accountName(), payload.accountNumber(), payload.bankCode(), payload.bookBankImageUrl()
+        );
     }
 
     private void badRequest(String message) {

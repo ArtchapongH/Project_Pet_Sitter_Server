@@ -40,6 +40,9 @@ public class User {
     @Column(name = "is_admin", nullable = false)
     private boolean isAdmin;
 
+        @Column(name = "role", nullable = false)
+        private String role;
+
     @Column(name = "is_verified", nullable = false)
     private boolean isVerified;
 
@@ -130,6 +133,14 @@ public class User {
     public void setAdmin(boolean admin) {
         isAdmin = admin;
     }
+
+        public String getRole() {
+            return role;
+        }
+
+        public void setRole(String role) {
+            this.role = role;
+        }
 
     public boolean isVerified() {
         return isVerified;

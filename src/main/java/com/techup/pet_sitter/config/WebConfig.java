@@ -3,15 +3,32 @@ package com.techup.pet_sitter.config;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.beans.factory.annotation.Value;
+
+import java.util.Arrays;
+import java.util.stream.Stream;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+    private static final String PRODUCTION_FRONTEND = "https://pet-sitter-client-one.vercel.app";
+
+    @Value("${app.cors.allowed-origin-patterns}")
+    private String allowedOriginPatterns;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        // Pattern-based match so any local dev port (Vite may fall back to 5174, 5175, ...) still works
+        String[] origins = Stream.concat(
+                        Stream.of(PRODUCTION_FRONTEND),
+                        Arrays.stream(allowedOriginPatterns.split(","))
+                )
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .distinct()
+                .toArray(String[]::new);
+        // Vercel forwards browser headers through its external rewrite, so the production
+        // frontend origin must still be allowed by Spring even though the browser calls /api.
         registry.addMapping("/api/**")
-                .allowedOriginPatterns("http://localhost:*", "http://127.0.0.1:*")
+                .allowedOriginPatterns(origins)
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);

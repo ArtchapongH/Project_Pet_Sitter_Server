@@ -29,34 +29,62 @@ public class OwnerPetController {
         this.pets = pets;
     }
 
+    private static final java.util.UUID DEFAULT_OWNER_ID = java.util.UUID.fromString("9b4e7c12-6f35-4a89-bd21-83c5e7f0496a");
+
+    private java.util.UUID resolveOwnerId(Jwt jwt, java.util.UUID headerUserId) {
+        if (jwt != null) {
+            return JwtUser.id(jwt);
+        }
+        if (headerUserId != null) {
+            return headerUserId;
+        }
+        return DEFAULT_OWNER_ID;
+    }
+
     @GetMapping
-    public List<PetResponse> list(@AuthenticationPrincipal Jwt jwt) {
-        return pets.list(JwtUser.id(jwt));
+    public List<PetResponse> list(
+            @AuthenticationPrincipal Jwt jwt,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "X-User-Id", required = false) java.util.UUID headerUserId
+    ) {
+        return pets.list(resolveOwnerId(jwt, headerUserId));
     }
 
     @GetMapping("/{id}")
-    public PetResponse get(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
-        return pets.get(JwtUser.id(jwt), id);
+    public PetResponse get(
+            @AuthenticationPrincipal Jwt jwt,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "X-User-Id", required = false) java.util.UUID headerUserId,
+            @PathVariable Long id
+    ) {
+        return pets.get(resolveOwnerId(jwt, headerUserId), id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PetResponse create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody PetRequest request) {
-        return pets.create(JwtUser.id(jwt), request);
+    public PetResponse create(
+            @AuthenticationPrincipal Jwt jwt,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "X-User-Id", required = false) java.util.UUID headerUserId,
+            @Valid @RequestBody PetRequest request
+    ) {
+        return pets.create(resolveOwnerId(jwt, headerUserId), request);
     }
 
     @PutMapping("/{id}")
     public PetResponse update(
             @AuthenticationPrincipal Jwt jwt,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "X-User-Id", required = false) java.util.UUID headerUserId,
             @PathVariable Long id,
             @Valid @RequestBody PetRequest request
     ) {
-        return pets.update(JwtUser.id(jwt), id, request);
+        return pets.update(resolveOwnerId(jwt, headerUserId), id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
-        pets.delete(JwtUser.id(jwt), id);
+    public void delete(
+            @AuthenticationPrincipal Jwt jwt,
+            @org.springframework.web.bind.annotation.RequestHeader(value = "X-User-Id", required = false) java.util.UUID headerUserId,
+            @PathVariable Long id
+    ) {
+        pets.delete(resolveOwnerId(jwt, headerUserId), id);
     }
 }

@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
@@ -53,9 +54,14 @@ public class SitterBookingService {
         return list(sitterId, query, null, null);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public SitterBookingResponse get(UUID sitterId, Long id) {
-        return toResponse(requireOwned(sitterId, id));
+        Booking booking = requireOwned(sitterId, id);
+        if (booking.getSitterViewedAt() == null) {
+            booking.setSitterViewedAt(OffsetDateTime.now(clock));
+            bookings.save(booking);
+        }
+        return toResponse(booking);
     }
 
     @Transactional
@@ -106,7 +112,7 @@ public class SitterBookingService {
         return new SitterBookingResponse(booking.getId(), displayStatus(booking), booking.getStartDate(),
                 booking.getEndDate(), booking.getStartTime(), booking.getEndTime(), booking.getDuration(),
                 booking.getDurationUnit(), booking.getTotalPrice(), booking.getTransactionNo(), booking.getCreatedAt(),
-                booking.getAdditionalMessage(), new SitterBookingResponse.Owner(owner.getName(), owner.getEmail(),
+                booking.getSitterViewedAt(), booking.getAdditionalMessage(), new SitterBookingResponse.Owner(owner.getName(), owner.getEmail(),
                 owner.getPhone(), owner.getAvatarUrl()), pets);
     }
 }

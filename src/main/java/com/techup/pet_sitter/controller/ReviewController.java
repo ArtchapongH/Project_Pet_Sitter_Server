@@ -3,6 +3,7 @@ package com.techup.pet_sitter.controller;
 import com.techup.pet_sitter.dto.ReviewAdminListItem;
 import com.techup.pet_sitter.repository.ReviewRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
+@PreAuthorize("@adminAccess.isAdmin(authentication)")
 @RequestMapping("/api/reviews")
 public class ReviewController {
 
@@ -25,7 +27,7 @@ public class ReviewController {
     }
 
     @GetMapping("/sitter/{sitterId}")
-    List<ReviewAdminListItem> listBySitter(@PathVariable UUID sitterId) {
+    public List<ReviewAdminListItem> listBySitter(@PathVariable UUID sitterId) {
         return reviews.findAdminListBySitterId(sitterId);
     }
 
@@ -38,4 +40,3 @@ public class ReviewController {
         return ResponseEntity.noContent().build();
     }
 }
-

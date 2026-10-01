@@ -30,6 +30,9 @@ public class OwnerProfileService {
         if (users.existsByPhoneAndIdNot(request.phone().trim(), userId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This phone number is already registered");
         }
+        if (user.getRole() == null || user.getRole().isBlank()) {
+            user.setRole("owner");
+        }
         user.setName(request.name().trim());
         user.setPhone(request.phone().trim());
         user.setIdNumber(blankToNull(request.idNumber()));
@@ -41,7 +44,7 @@ public class OwnerProfileService {
     }
 
     private AuthMeResponse toMe(User user) {
-        String role = sitterProfiles.existsById(user.getId()) ? "sitter" : "owner";
+        String role = sitterProfiles.existsById(user.getId()) ? "pet-sitter" : "owner";
         return new AuthMeResponse(
                 user.getId(),
                 role,
@@ -52,7 +55,8 @@ public class OwnerProfileService {
                 user.getDateOfBirth(),
                 user.getAvatarUrl(),
                 OwnerProfileRules.isComplete(user),
-                Boolean.TRUE.equals(user.isBanned())
+                Boolean.TRUE.equals(user.isBanned()),
+                user.isAdmin()
         );
     }
 
