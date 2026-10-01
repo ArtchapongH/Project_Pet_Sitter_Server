@@ -45,6 +45,7 @@ public class SitterApprovalService {
     private final SitterPhotoRepository photos;
     private final ReviewRepository reviews;
     private final ObjectMapper json;
+    private final NotificationService notifications;
 
     public SitterApprovalService(
             UserRepository users,
@@ -53,7 +54,8 @@ public class SitterApprovalService {
             SitterPetTypeRepository sitterPetTypes,
             SitterPhotoRepository photos,
             ReviewRepository reviews,
-            ObjectMapper json
+            ObjectMapper json,
+            NotificationService notifications
     ) {
         this.users = users;
         this.profiles = profiles;
@@ -62,6 +64,7 @@ public class SitterApprovalService {
         this.photos = photos;
         this.reviews = reviews;
         this.json = json;
+        this.notifications = notifications;
     }
 
     @Transactional(readOnly = true)
@@ -147,7 +150,9 @@ public class SitterApprovalService {
         profile.setListed(next == ApprovalStatus.APPROVED);
         profile.setPendingProfile(null);
         profile.setRejectionReason(null);
-        return response(profiles.save(profile));
+        SitterProfile saved = profiles.save(profile);
+        notifications.notify(saved.getUser(), "approval", "Your pet-sitter profile is " + next.value());
+        return response(saved);
     }
 
     @Transactional
@@ -168,7 +173,9 @@ public class SitterApprovalService {
         profile.setPet_sitter_state(current == ApprovalStatus.WAITING_FOR_VERIFY ? 2 : 3);
         profile.setListed(false);
         profile.setRejectionReason(reason.trim());
-        return response(profiles.save(profile));
+        SitterProfile saved = profiles.save(profile);
+        notifications.notify(saved.getUser(), "approval", "Your pet-sitter profile needs changes: " + reason.trim());
+        return response(saved);
     }
 
     @Transactional(readOnly = true)

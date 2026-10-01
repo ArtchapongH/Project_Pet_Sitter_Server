@@ -43,8 +43,9 @@ class SitterApprovalServiceTest {
     private final SitterPhotoRepository photos = mock(SitterPhotoRepository.class);
     private final ReviewRepository reviews = mock(ReviewRepository.class);
     private final ObjectMapper json = mock(ObjectMapper.class);
+    private final NotificationService notifications = mock(NotificationService.class);
     private final SitterApprovalService service = new SitterApprovalService(
-            users, profiles, petTypes, sitterPetTypes, photos, reviews, json
+            users, profiles, petTypes, sitterPetTypes, photos, reviews, json, notifications
     );
     private final UUID sitterId = UUID.randomUUID();
     private final UUID adminId = UUID.randomUUID();

@@ -21,7 +21,6 @@ import java.util.UUID;
 @Service
 public class SupabaseStorageService {
     private static final Set<String> IMAGE_TYPES = Set.of("image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif");
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private final String supabaseUrl;
     private final String bucket;
     private final String apiKey;
@@ -88,7 +87,7 @@ public class SupabaseStorageService {
                     .header("Content-Type", contentType)
                     .POST(HttpRequest.BodyPublishers.ofByteArray(file.getBytes()))
                     .build();
-            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = HttpClientHolder.INSTANCE.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 300) {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, storageErrorMessage(response.statusCode()));
             }
@@ -99,5 +98,11 @@ public class SupabaseStorageService {
         } catch (IOException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not upload the image");
         }
+    }
+
+    private static final class HttpClientHolder {
+        private static final HttpClient INSTANCE = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
     }
 }

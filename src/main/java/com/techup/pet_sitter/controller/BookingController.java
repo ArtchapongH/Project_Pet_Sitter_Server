@@ -16,6 +16,7 @@ import com.techup.pet_sitter.service.OwnerProfileRules;
 import com.techup.pet_sitter.service.BookingAdminService;
 import com.techup.pet_sitter.service.SitterApprovalService;
 import com.techup.pet_sitter.service.SitterBookingService;
+import com.techup.pet_sitter.service.NotificationService;
 import com.techup.pet_sitter.security.JwtUser;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -48,6 +49,7 @@ public class BookingController {
     private final BookingPetRepository bookingPets;
     private final com.techup.pet_sitter.repository.SitterProfileRepository profiles;
     private final BookingAdminService bookingAdminService;
+    private final NotificationService notifications;
 
     @org.springframework.beans.factory.annotation.Value("${stripe.secret.key:}")
     private String stripeSecretKey;
@@ -56,7 +58,8 @@ public class BookingController {
                              SitterBookingService sitterBookings, PaymentRepository payments,
                              PetRepository pets, BookingPetRepository bookingPets,
                              com.techup.pet_sitter.repository.SitterProfileRepository profiles,
-                             BookingAdminService bookingAdminService) {
+                             BookingAdminService bookingAdminService,
+                             NotificationService notifications) {
         this.bookings = bookings;
         this.users = users;
         this.approvals = approvals;
@@ -66,6 +69,7 @@ public class BookingController {
         this.bookingPets = bookingPets;
         this.profiles = profiles;
         this.bookingAdminService = bookingAdminService;
+        this.notifications = notifications;
     }
 
     @GetMapping("/sitter")
@@ -129,6 +133,7 @@ public class BookingController {
         String txnNo = String.valueOf((long) (Math.random() * 900000L + 100000L));
         booking.setTransactionNo(txnNo);
         Booking saved = bookings.save(booking);
+        notifications.notify(sitterProfile.getUser(), "booking", owner.getName() + " created a new booking");
 
         // Link pets to BookingPet
         if (request.petIds() != null && !request.petIds().isEmpty()) {

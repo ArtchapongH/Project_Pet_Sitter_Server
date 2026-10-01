@@ -44,7 +44,7 @@ class SitterBookingServiceTest {
         }).when(booking).setSitterViewedAt(org.mockito.ArgumentMatchers.any());
         when(bookingPets.findByBooking_Id(42L)).thenReturn(List.of());
 
-        var response = new SitterBookingService(bookings, bookingPets, clock).get(sitterId, 42L);
+        var response = new SitterBookingService(bookings, bookingPets, clock, mock(NotificationService.class)).get(sitterId, 42L);
 
         assertNotNull(response.sitterViewedAt());
         assertEquals(Instant.parse("2026-09-24T08:00:00Z"), response.sitterViewedAt().toInstant());

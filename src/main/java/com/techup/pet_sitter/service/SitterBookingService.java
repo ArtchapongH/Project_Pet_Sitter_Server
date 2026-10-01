@@ -27,16 +27,20 @@ public class SitterBookingService {
     private final BookingRepository bookings;
     private final BookingPetRepository bookingPets;
     private final Clock clock;
+    private final NotificationService notifications;
 
     @Autowired
-    public SitterBookingService(BookingRepository bookings, BookingPetRepository bookingPets) {
-        this(bookings, bookingPets, Clock.system(BANGKOK));
+    public SitterBookingService(BookingRepository bookings, BookingPetRepository bookingPets,
+                                NotificationService notifications) {
+        this(bookings, bookingPets, Clock.system(BANGKOK), notifications);
     }
 
-    SitterBookingService(BookingRepository bookings, BookingPetRepository bookingPets, Clock clock) {
+    SitterBookingService(BookingRepository bookings, BookingPetRepository bookingPets, Clock clock,
+                         NotificationService notifications) {
         this.bookings = bookings;
         this.bookingPets = bookingPets;
         this.clock = clock;
+        this.notifications = notifications;
     }
 
     @Transactional(readOnly = true)
@@ -76,7 +80,9 @@ public class SitterBookingService {
         } else {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Invalid booking status transition");
         }
-        return toResponse(bookings.save(booking));
+        Booking saved = bookings.save(booking);
+        notifications.notify(saved.getOwner(), "booking", "Your booking status is now " + next.replace('_', ' '));
+        return toResponse(saved);
     }
 
     private Booking requireOwned(UUID sitterId, Long id) {
