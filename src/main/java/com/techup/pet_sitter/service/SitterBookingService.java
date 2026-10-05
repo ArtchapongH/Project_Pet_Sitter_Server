@@ -10,11 +10,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.beans.factory.annotation.Autowired;
+
 
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
@@ -26,16 +27,20 @@ public class SitterBookingService {
     private final BookingRepository bookings;
     private final BookingPetRepository bookingPets;
     private final Clock clock;
+    private final NotificationService notifications;
 
     @Autowired
-    public SitterBookingService(BookingRepository bookings, BookingPetRepository bookingPets) {
-        this(bookings, bookingPets, Clock.system(BANGKOK));
+    public SitterBookingService(BookingRepository bookings, BookingPetRepository bookingPets,
+                                NotificationService notifications) {
+        this(bookings, bookingPets, Clock.system(BANGKOK), notifications);
     }
 
-    SitterBookingService(BookingRepository bookings, BookingPetRepository bookingPets, Clock clock) {
+    SitterBookingService(BookingRepository bookings, BookingPetRepository bookingPets, Clock clock,
+                         NotificationService notifications) {
         this.bookings = bookings;
         this.bookingPets = bookingPets;
         this.clock = clock;
+        this.notifications = notifications;
     }
 
     @Transactional(readOnly = true)
@@ -53,9 +58,14 @@ public class SitterBookingService {
         return list(sitterId, query, null, null);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public SitterBookingResponse get(UUID sitterId, Long id) {
-        return toResponse(requireOwned(sitterId, id));
+        Booking booking = requireOwned(sitterId, id);
+        if (booking.getSitterViewedAt() == null) {
+            booking.setSitterViewedAt(OffsetDateTime.now(clock));
+            bookings.save(booking);
+        }
+        return toResponse(booking);
     }
 
     @Transactional
@@ -70,7 +80,9 @@ public class SitterBookingService {
         } else {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Invalid booking status transition");
         }
-        return toResponse(bookings.save(booking));
+        Booking saved = bookings.save(booking);
+        notifications.notify(saved.getOwner(), "booking", "Your booking status is now " + next.replace('_', ' '));
+        return toResponse(saved);
     }
 
     private Booking requireOwned(UUID sitterId, Long id) {
@@ -106,7 +118,7 @@ public class SitterBookingService {
         return new SitterBookingResponse(booking.getId(), displayStatus(booking), booking.getStartDate(),
                 booking.getEndDate(), booking.getStartTime(), booking.getEndTime(), booking.getDuration(),
                 booking.getDurationUnit(), booking.getTotalPrice(), booking.getTransactionNo(), booking.getCreatedAt(),
-                booking.getAdditionalMessage(), new SitterBookingResponse.Owner(owner.getName(), owner.getEmail(),
+                booking.getSitterViewedAt(), booking.getAdditionalMessage(), new SitterBookingResponse.Owner(owner.getName(), owner.getEmail(),
                 owner.getPhone(), owner.getAvatarUrl()), pets);
     }
 }

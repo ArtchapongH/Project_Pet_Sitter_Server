@@ -6,6 +6,6 @@ import jakarta.validation.constraints.Pattern;
 public record AuthBootstrapRequest(
         @NotBlank String name,
         @NotBlank String phone,
-        @Pattern(regexp = "owner|sitter") String role
+        @Pattern(regexp = "owner|pet-sitter|sitter") String role
 ) {
 }
