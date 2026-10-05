@@ -1,7 +1,7 @@
 package com.techup.pet_sitter.service;
 
 import com.techup.pet_sitter.dto.ConversationPeer;
-import com.techup.pet_sitter.dto.ConversationResponse;
+import com.techup.pet_sitter.dto.ChatConversationResponse;
 import com.techup.pet_sitter.dto.MessagePageResponse;
 import com.techup.pet_sitter.dto.MessageResponse;
 import com.techup.pet_sitter.dto.OpenConversationRequest;
@@ -53,7 +53,7 @@ public class ChatService {
     }
 
     @Transactional
-    public ConversationResponse open(UUID userId, OpenConversationRequest request) {
+    public ChatConversationResponse open(UUID userId, OpenConversationRequest request) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sitterId is required");
         }
@@ -67,22 +67,22 @@ public class ChatService {
         }
 
         return conversations.findByOwner_IdAndSitter_UserId(ownerId, sitterId)
-                .map(existing -> toConversationResponse(requireVisible(existing.getId(), userId), userId))
+                .map(existing -> toChatConversationResponse(requireVisible(existing.getId(), userId), userId))
                 .orElseGet(() -> createConversation(userId, ownerId, sitterId));
     }
 
     @Transactional(readOnly = true)
-    public List<ConversationResponse> list(UUID userId) {
+    public List<ChatConversationResponse> list(UUID userId) {
         requireUser(userId);
         return conversations.findVisibleTo(userId).stream()
-                .map(conversation -> toConversationResponse(conversation, userId))
+                .map(conversation -> toChatConversationResponse(conversation, userId))
                 .sorted(Comparator.comparing(this::sortTime).reversed())
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public ConversationResponse get(UUID userId, Long conversationId) {
-        return toConversationResponse(requireVisible(conversationId, userId), userId);
+    public ChatConversationResponse get(UUID userId, Long conversationId) {
+        return toChatConversationResponse(requireVisible(conversationId, userId), userId);
     }
 
     @Transactional(readOnly = true)
@@ -94,7 +94,7 @@ public class ChatService {
         List<Message> page = hasMore ? rows.subList(0, pageSize) : rows;
         List<MessageResponse> items = new ArrayList<>(page.size());
         for (int index = page.size() - 1; index >= 0; index--) {
-            items.add(toMessageResponse(page.get(index)));
+            items.add(toMessageResponse(page.get(index), userId));
         }
         return new MessagePageResponse(items, hasMore);
     }
@@ -116,7 +116,7 @@ public class ChatService {
         message.setImageUrl(trimmedImage);
         message.setSentAt(OffsetDateTime.now());
         Message saved = messages.save(message);
-        MessageResponse response = toMessageResponse(saved);
+        MessageResponse response = toMessageResponse(saved, userId);
         UUID ownerId = conversation.getOwner().getId();
         UUID sitterId = conversation.getSitter().getUserId();
         publishAfterCommit(() -> realtime.publishMessage(response, ownerId, sitterId));
@@ -135,7 +135,7 @@ public class ChatService {
         }
     }
 
-    private ConversationResponse createConversation(UUID userId, UUID ownerId, UUID sitterId) {
+    private ChatConversationResponse createConversation(UUID userId, UUID ownerId, UUID sitterId) {
         User owner = requireUser(ownerId);
         SitterProfile sitter = sitters.findByIdWithUser(sitterId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sitter not found"));
@@ -148,7 +148,7 @@ public class ChatService {
         conversation.setSitter(sitter);
         conversation.setCreatedAt(OffsetDateTime.now());
         Conversation saved = conversations.save(conversation);
-        return toConversationResponse(requireVisible(saved.getId(), userId), userId);
+        return toChatConversationResponse(requireVisible(saved.getId(), userId), userId);
     }
 
     private Conversation requireVisible(Long conversationId, UUID userId) {
@@ -170,13 +170,13 @@ public class ChatService {
         return user;
     }
 
-    private ConversationResponse toConversationResponse(Conversation conversation, UUID userId) {
+    private ChatConversationResponse toChatConversationResponse(Conversation conversation, UUID userId) {
         Long conversationId = conversation.getId();
         MessageResponse lastMessage = messages.findFirstByConversation_IdOrderByIdDesc(conversationId)
-                .map(this::toMessageResponse)
+                .map(message -> toMessageResponse(message, userId))
                 .orElse(null);
         long unreadCount = messages.countByConversation_IdAndSender_IdNotAndReadAtIsNull(conversationId, userId);
-        return new ConversationResponse(
+        return new ChatConversationResponse(
                 conversationId,
                 conversation.getOwner().getId(),
                 conversation.getSitter().getUserId(),
@@ -202,7 +202,7 @@ public class ChatService {
         return new ConversationPeer(owner.getId(), owner.getName(), owner.getAvatarUrl(), "owner");
     }
 
-    private MessageResponse toMessageResponse(Message message) {
+    private MessageResponse toMessageResponse(Message message, UUID viewerId) {
         return new MessageResponse(
                 message.getId(),
                 message.getConversation().getId(),
@@ -210,11 +210,12 @@ public class ChatService {
                 message.getContent(),
                 message.getImageUrl(),
                 message.getSentAt(),
-                message.getReadAt()
+                message.getReadAt(),
+                viewerId.equals(message.getSender().getId())
         );
     }
 
-    private OffsetDateTime sortTime(ConversationResponse conversation) {
+    private OffsetDateTime sortTime(ChatConversationResponse conversation) {
         return conversation.lastMessage() == null ? conversation.createdAt() : conversation.lastMessage().sentAt();
     }
 

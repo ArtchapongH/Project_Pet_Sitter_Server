@@ -24,6 +24,12 @@ public interface PetRepository extends JpaRepository<Pet, Long> {
     @Query("select pet from Pet pet join fetch pet.petType where pet.owner.id = :ownerId order by pet.id desc")
     List<Pet> findAllByOwnerId(@Param("ownerId") UUID ownerId);
 
+    @Query("select pet from Pet pet join fetch pet.petType where pet.owner.id = :ownerId and coalesce(pet.isSuspended, false) = false order by pet.id desc")
+    List<Pet> findAllActiveByOwnerId(@Param("ownerId") UUID ownerId);
+
     @Query("select pet from Pet pet join fetch pet.petType where pet.id = :id and pet.owner.id = :ownerId")
     Optional<Pet> findByIdAndOwnerId(@Param("id") Long id, @Param("ownerId") UUID ownerId);
+
+    @Query("select pet from Pet pet join fetch pet.petType where pet.id = :id and pet.owner.id = :ownerId and coalesce(pet.isSuspended, false) = false")
+    Optional<Pet> findActiveByIdAndOwnerId(@Param("id") Long id, @Param("ownerId") UUID ownerId);
 }

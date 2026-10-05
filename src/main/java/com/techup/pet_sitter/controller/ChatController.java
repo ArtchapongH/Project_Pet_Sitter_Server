@@ -1,6 +1,6 @@
 package com.techup.pet_sitter.controller;
 
-import com.techup.pet_sitter.dto.ConversationResponse;
+import com.techup.pet_sitter.dto.ChatConversationResponse;
 import com.techup.pet_sitter.dto.MessagePageResponse;
 import com.techup.pet_sitter.dto.MessageResponse;
 import com.techup.pet_sitter.dto.OpenConversationRequest;
@@ -36,7 +36,7 @@ public class ChatController {
     }
 
     @PostMapping
-    public ConversationResponse open(
+    public ChatConversationResponse open(
             @RequestHeader("X-User-Id") UUID userId,
             @RequestBody OpenConversationRequest request
     ) {
@@ -44,12 +44,12 @@ public class ChatController {
     }
 
     @GetMapping
-    public List<ConversationResponse> list(@RequestHeader("X-User-Id") UUID userId) {
+    public List<ChatConversationResponse> list(@RequestHeader("X-User-Id") UUID userId) {
         return chats.list(userId);
     }
 
     @GetMapping("/{id}")
-    public ConversationResponse get(@RequestHeader("X-User-Id") UUID userId, @PathVariable Long id) {
+    public ChatConversationResponse get(@RequestHeader("X-User-Id") UUID userId, @PathVariable Long id) {
         return chats.get(userId, id);
     }
 

@@ -57,7 +57,9 @@ public class SitterApprovalController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(defaultValue = "profile") String folder
     ) {
-        String safeFolder = "gallery".equals(folder) ? "gallery" : "profile";
+        approvals.requireSitter(JwtUser.id(jwt));
+        if (!List.of("profile", "gallery").contains(folder)) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid image folder");
+        String safeFolder = folder;
         return new UploadResponse(storage.uploadImage(JwtUser.id(jwt), safeFolder, file));
     }
 

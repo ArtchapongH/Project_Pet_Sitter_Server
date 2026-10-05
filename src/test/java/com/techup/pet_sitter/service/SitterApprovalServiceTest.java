@@ -43,8 +43,9 @@ class SitterApprovalServiceTest {
     private final SitterPhotoRepository photos = mock(SitterPhotoRepository.class);
     private final ReviewRepository reviews = mock(ReviewRepository.class);
     private final ObjectMapper json = mock(ObjectMapper.class);
+    private final NotificationService notifications = mock(NotificationService.class);
     private final SitterApprovalService service = new SitterApprovalService(
-            users, profiles, petTypes, sitterPetTypes, photos, reviews, json
+            users, profiles, petTypes, sitterPetTypes, photos, reviews, json, notifications
     );
     private final UUID sitterId = UUID.randomUUID();
     private final UUID adminId = UUID.randomUUID();
@@ -244,6 +245,7 @@ class SitterApprovalServiceTest {
     private User user() {
         User sitter = new User();
         sitter.setId(sitterId);
+        sitter.setRole("pet-sitter");
         sitter.setName("old name");
         sitter.setEmail("old@example.com");
         return sitter;
@@ -284,5 +286,50 @@ class SitterApprovalServiceTest {
                 List.of(), "123 Main Road", "Pathum Wan", "Lumphini", "Bangkok", "10330",
                 new BigDecimal("13.7440"), new BigDecimal("100.5400"), null, null, null, null, null
         );
+    }
+    @Test
+    void ownerCannotLoadOrSubmitSitterProfile() {
+        User owner = user();
+        owner.setRole("owner");
+        when(users.findById(sitterId)).thenReturn(Optional.of(owner));
+        var error = assertThrows(ResponseStatusException.class, () -> service.getOwnProfile(sitterId));
+        assertEquals(403, error.getStatusCode().value());
+        assertThrows(ResponseStatusException.class, () -> service.submit(sitterId, basicPayload()));
+    }
+
+    @Test
+    void firstRoundRejectionKeepsPendingForResubmission() {
+        User sitter = user();
+        SitterProfile profile = profile(sitter, "Waiting for verify", false);
+        profile.setPendingProfile("{}");
+        when(profiles.findForUpdate(sitterId)).thenReturn(Optional.of(profile));
+        when(users.findById(sitterId)).thenReturn(Optional.of(sitter));
+        when(json.readValue("{}", ProfilePayload.class)).thenReturn(basicPayload());
+        when(json.writeValueAsString(any(ProfilePayload.class))).thenReturn("{}");
+        var rejected = service.reject(adminId, sitterId, "Please fix ID");
+        assertEquals("Unverified", rejected.approvalStatus());
+        assertEquals("Please fix ID", rejected.rejectionReason());
+        assertEquals("new name", rejected.pendingProfile().fullName());
+        assertEquals("Waiting for verify", service.submit(sitterId, basicPayload()).approvalStatus());
+    }
+    @Test
+    void approvedEditsStayPendingAndRejectedEditsCanBeResubmitted() {
+        User sitter = user();
+        SitterProfile profile = profile(sitter, "Approved", true);
+        var full = fullPayload();
+        when(users.findById(sitterId)).thenReturn(Optional.of(sitter));
+        when(profiles.findForUpdate(sitterId)).thenReturn(Optional.of(profile));
+        when(json.writeValueAsString(full)).thenReturn("{edited}");
+        when(json.readValue("{edited}", ProfilePayload.class)).thenReturn(full);
+        var waiting = service.submit(sitterId, full);
+        assertEquals("Waiting for approve", waiting.approvalStatus());
+        assertTrue(waiting.listed());
+        assertEquals("old name", sitter.getName());
+        assertEquals(full.displayName(), waiting.pendingProfile().displayName());
+        var rejected = service.reject(adminId, sitterId, "Please fix services");
+        assertEquals("Rejected", rejected.approvalStatus());
+        assertFalse(rejected.listed());
+        assertEquals("old name", sitter.getName());
+        assertEquals("Waiting for approve", service.submit(sitterId, full).approvalStatus());
     }
 }

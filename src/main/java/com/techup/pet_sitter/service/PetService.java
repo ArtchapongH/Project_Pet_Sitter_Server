@@ -32,7 +32,7 @@ public class PetService {
 
     @Transactional(readOnly = true)
     public List<PetResponse> list(UUID ownerId) {
-        return pets.findAllByOwnerId(ownerId).stream().map(this::toResponse).toList();
+        return pets.findAllActiveByOwnerId(ownerId).stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -46,6 +46,7 @@ public class PetService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account profile is missing"));
         Pet pet = new Pet();
         pet.setOwner(owner);
+        pet.setIsSuspended(false);
         apply(pet, request);
         return toResponse(pets.save(pet));
     }
@@ -85,7 +86,7 @@ public class PetService {
     }
 
     private Pet requireOwned(UUID ownerId, Long petId) {
-        return pets.findByIdAndOwnerId(petId, ownerId)
+        return pets.findActiveByIdAndOwnerId(petId, ownerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pet not found"));
     }
 

@@ -21,7 +21,6 @@ import java.util.UUID;
 @Service
 public class SupabaseStorageService {
     private static final Set<String> IMAGE_TYPES = Set.of("image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif");
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private final String supabaseUrl;
     private final String bucket;
     private final String apiKey;
@@ -68,6 +67,8 @@ public class SupabaseStorageService {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An image file is required");
         }
+        if (file.getSize() > 5_000_000) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image must be at most 5 MB");
+        if (file.getContentType() == null || file.getContentType().isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image content type is required");
         String contentType = storageType(file.getContentType());
         if (!IMAGE_TYPES.contains(contentType)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only jpeg, png, webp or gif images are allowed");
@@ -88,7 +89,7 @@ public class SupabaseStorageService {
                     .header("Content-Type", contentType)
                     .POST(HttpRequest.BodyPublishers.ofByteArray(file.getBytes()))
                     .build();
-            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = HttpClientHolder.INSTANCE.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 300) {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, storageErrorMessage(response.statusCode()));
             }
@@ -99,5 +100,11 @@ public class SupabaseStorageService {
         } catch (IOException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not upload the image");
         }
+    }
+
+    private static final class HttpClientHolder {
+        private static final HttpClient INSTANCE = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
     }
 }

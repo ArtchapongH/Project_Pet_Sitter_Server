@@ -23,10 +23,12 @@ import org.springframework.web.multipart.MultipartFile;
 public class PayoutController {
     private final PayoutService payouts;
     private final SupabaseStorageService storage;
+    private final com.techup.pet_sitter.service.SitterApprovalService approvals;
 
-    public PayoutController(PayoutService payouts, SupabaseStorageService storage) {
+    public PayoutController(PayoutService payouts, SupabaseStorageService storage, com.techup.pet_sitter.service.SitterApprovalService approvals) {
         this.payouts = payouts;
         this.storage = storage;
+        this.approvals = approvals;
     }
 
     @GetMapping
@@ -41,6 +43,7 @@ public class PayoutController {
     @PostMapping("/book-bank-image")
     UploadResponse uploadBookBankImage(@AuthenticationPrincipal Jwt jwt,
                                        @RequestParam("file") MultipartFile file) {
+        approvals.requireSitter(JwtUser.id(jwt));
         return new UploadResponse(storage.uploadImage(JwtUser.id(jwt), "payout", file));
     }
 }

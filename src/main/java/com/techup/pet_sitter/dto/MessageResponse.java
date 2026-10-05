@@ -10,6 +10,7 @@ public record MessageResponse(
         String content,
         String imageUrl,
         OffsetDateTime sentAt,
-        OffsetDateTime readAt
+        OffsetDateTime readAt,
+        boolean mine
 ) {
 }

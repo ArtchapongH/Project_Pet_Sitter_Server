@@ -1,6 +1,6 @@
 package com.techup.pet_sitter.service;
 
-import com.techup.pet_sitter.dto.ConversationResponse;
+import com.techup.pet_sitter.dto.ChatConversationResponse;
 import com.techup.pet_sitter.dto.MessageResponse;
 import com.techup.pet_sitter.dto.OpenConversationRequest;
 import com.techup.pet_sitter.entity.Conversation;
@@ -65,7 +65,7 @@ class ChatServiceTest {
         when(messages.findFirstByConversation_IdOrderByIdDesc(11L)).thenReturn(Optional.empty());
         when(messages.countByConversation_IdAndSender_IdNotAndReadAtIsNull(11L, ownerId)).thenReturn(0L);
 
-        ConversationResponse result = service.open(ownerId, new OpenConversationRequest(sitterId, null));
+        ChatConversationResponse result = service.open(ownerId, new OpenConversationRequest(sitterId, null));
 
         assertEquals(11L, result.id());
         assertEquals(ownerId, result.ownerId());
