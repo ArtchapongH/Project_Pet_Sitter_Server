@@ -147,13 +147,13 @@ public class BookingController {
         // Link pets to BookingPet
         if (request.petIds() != null && !request.petIds().isEmpty()) {
             for (Long petId : request.petIds()) {
-                pets.findById(petId).ifPresent(p -> {
-                    com.techup.pet_sitter.entity.BookingPet bp = new com.techup.pet_sitter.entity.BookingPet();
-                    bp.setId(new com.techup.pet_sitter.entity.BookingPet.BookingPetId(saved.getId(), p.getId()));
-                    bp.setBooking(saved);
-                    bp.setPet(p);
-                    bookingPets.save(bp);
-                });
+                com.techup.pet_sitter.entity.Pet pet = pets.findActiveByIdAndOwnerId(petId, owner.getId())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pet not found"));
+                com.techup.pet_sitter.entity.BookingPet bp = new com.techup.pet_sitter.entity.BookingPet();
+                bp.setId(new com.techup.pet_sitter.entity.BookingPet.BookingPetId(saved.getId(), pet.getId()));
+                bp.setBooking(saved);
+                bp.setPet(pet);
+                bookingPets.save(bp);
             }
         }
 
