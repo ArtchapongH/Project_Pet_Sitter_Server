@@ -25,8 +25,7 @@ public class PayoutService {
 
     @Transactional(readOnly = true)
     public PayoutResponse get(UUID sitterId) {
-        SitterProfile profile = profiles.findById(sitterId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sitter profile not found"));
+        SitterProfile profile = requireProfile(sitterId);
         var transactions = bookings.findBySitter_UserIdOrderByCreatedAtDesc(sitterId).stream()
                 .filter(b -> "success".equals(b.getStatus()))
                 .map(b -> new PayoutResponse.Transaction(b.getId(), b.getUpdatedAt(), b.getOwner().getName(),

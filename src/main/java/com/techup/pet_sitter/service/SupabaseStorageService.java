@@ -2,9 +2,6 @@ package com.techup.pet_sitter.service;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -20,35 +17,11 @@ import java.util.UUID;
 
 @Service
 public class SupabaseStorageService {
-    private static final Set<String> IMAGE_TYPES = Set.of("image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif");
+    private static final Set<String> IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp", "image/gif");
+    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private final String supabaseUrl;
     private final String bucket;
     private final String apiKey;
-
-    static String storageType(String contentType) {
-        if (contentType == null || contentType.isBlank() || "image/jpg".equals(contentType) || "image/pjpeg".equals(contentType)) {
-            return "image/jpeg";
-        }
-        return contentType;
-    }
-
-    static String authorizationBearer(String apiKey, String userToken) {
-        if (userToken != null && userToken.chars().filter(ch -> ch == '.').count() == 2) return userToken;
-        return apiKey;
-    }
-
-    static String storageErrorMessage(int statusCode) {
-        if (statusCode == 401 || statusCode == 403) {
-            return "Image upload is not allowed by the Supabase Storage policy";
-        }
-        return "Could not upload the image to Supabase Storage (status " + statusCode + ")";
-    }
-
-    private String currentUserToken() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof Jwt jwt) return jwt.getTokenValue();
-        return null;
-    }
 
     public SupabaseStorageService(
             @Value("${supabase.url}") String supabaseUrl,
@@ -67,7 +40,7 @@ public class SupabaseStorageService {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "An image file is required");
         }
-        String contentType = storageType(file.getContentType());
+        String contentType = file.getContentType() == null ? "application/octet-stream" : file.getContentType();
         if (!IMAGE_TYPES.contains(contentType)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only jpeg, png, webp or gif images are allowed");
         }
@@ -82,14 +55,15 @@ public class SupabaseStorageService {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(supabaseUrl + "/storage/v1/object/" + bucket + "/" + path))
                     .timeout(Duration.ofSeconds(20))
-                    .header("Authorization", "Bearer " + authorizationBearer(apiKey, currentUserToken()))
+                    .header("Authorization", "Bearer " + apiKey)
                     .header("apikey", apiKey)
                     .header("Content-Type", contentType)
+                    .header("x-upsert", "true")
                     .POST(HttpRequest.BodyPublishers.ofByteArray(file.getBytes()))
                     .build();
-            HttpResponse<String> response = HttpClientHolder.INSTANCE.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 300) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, storageErrorMessage(response.statusCode()));
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not upload the image");
             }
             return supabaseUrl + "/storage/v1/object/public/" + bucket + "/" + path;
         } catch (InterruptedException exception) {
@@ -98,11 +72,5 @@ public class SupabaseStorageService {
         } catch (IOException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not upload the image");
         }
-    }
-
-    private static final class HttpClientHolder {
-        private static final HttpClient INSTANCE = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .build();
     }
 }
