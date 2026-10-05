@@ -9,11 +9,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "reports")
+@Table(name = "reports", uniqueConstraints = @UniqueConstraint(name = "uk_reports_booking", columnNames = "booking_id"))
 public class Report {
 
     @Id
