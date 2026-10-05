@@ -13,6 +13,7 @@ public record AuthMeResponse(
         LocalDate dateOfBirth,
         String avatarUrl,
         boolean profileComplete,
-        boolean banned
+        boolean banned,
+        boolean admin
 ) {
 }

@@ -7,13 +7,15 @@ import com.techup.pet_sitter.dto.ProfileResponse;
 import com.techup.pet_sitter.dto.PublicReviewResponse;
 import com.techup.pet_sitter.dto.PublicSitterDetailResponse;
 import com.techup.pet_sitter.dto.RejectRequest;
+import com.techup.pet_sitter.security.JwtUser;
 import com.techup.pet_sitter.service.SitterApprovalService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,38 +34,38 @@ public class SitterApprovalController {
     }
 
     @GetMapping("/sitter/profile")
-    ProfileResponse ownProfile(@RequestHeader("X-User-Id") UUID userId) {
-        return approvals.getOwnProfile(userId);
+    ProfileResponse ownProfile(@AuthenticationPrincipal Jwt jwt) {
+        return approvals.getOwnProfile(JwtUser.id(jwt));
     }
 
     @PostMapping("/sitter/profile/submit")
     ProfileResponse submit(
-            @RequestHeader("X-User-Id") UUID userId,
+            @AuthenticationPrincipal Jwt jwt,
             @RequestBody ProfilePayload payload
     ) {
-        return approvals.submit(userId, payload);
+        return approvals.submit(JwtUser.id(jwt), payload);
     }
 
     @GetMapping("/admin/sitter-approvals")
-    List<ProfileResponse> queue(@RequestHeader("X-Admin-Id") UUID adminId) {
-        return approvals.approvalQueue(adminId);
+    List<ProfileResponse> queue(@AuthenticationPrincipal Jwt jwt) {
+        return approvals.approvalQueue(JwtUser.id(jwt));
     }
 
     @PatchMapping("/admin/sitter-approvals/approve")
     ProfileResponse approve(
-            @RequestHeader("X-Admin-Id") UUID adminId,
+            @AuthenticationPrincipal Jwt jwt,
             @RequestParam UUID sitterId
     ) {
-        return approvals.approve(adminId, sitterId);
+        return approvals.approve(JwtUser.id(jwt), sitterId);
     }
 
     @PatchMapping("/admin/sitter-approvals/reject")
     ProfileResponse reject(
-            @RequestHeader("X-Admin-Id") UUID adminId,
+            @AuthenticationPrincipal Jwt jwt,
             @RequestParam UUID sitterId,
             @RequestBody RejectRequest request
     ) {
-        return approvals.reject(adminId, sitterId, request.reason());
+        return approvals.reject(JwtUser.id(jwt), sitterId, request.reason());
     }
 
     @GetMapping("/sitters")

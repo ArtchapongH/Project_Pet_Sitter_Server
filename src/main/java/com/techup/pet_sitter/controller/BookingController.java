@@ -1,5 +1,9 @@
 package com.techup.pet_sitter.controller;
 
+import com.techup.pet_sitter.dto.OwnerBookingResponse;
+import com.techup.pet_sitter.dto.OwnerReportRequest;
+import com.techup.pet_sitter.dto.OwnerReviewRequest;
+import com.techup.pet_sitter.dto.OwnerScheduleRequest;
 import com.techup.pet_sitter.dto.BookingAdminListItem;
 import com.techup.pet_sitter.dto.BookingRequest;
 import com.techup.pet_sitter.dto.BookingResponse;
@@ -12,11 +16,17 @@ import com.techup.pet_sitter.repository.BookingRepository;
 import com.techup.pet_sitter.repository.PaymentRepository;
 import com.techup.pet_sitter.repository.PetRepository;
 import com.techup.pet_sitter.repository.UserRepository;
+import com.techup.pet_sitter.service.BookingScheduleGuard;
+import com.techup.pet_sitter.service.OwnerBookingService;
 import com.techup.pet_sitter.service.OwnerProfileRules;
 import com.techup.pet_sitter.service.BookingAdminService;
 import com.techup.pet_sitter.service.SitterApprovalService;
 import com.techup.pet_sitter.service.SitterBookingService;
+import com.techup.pet_sitter.security.JwtUser;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,7 +34,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -45,6 +54,8 @@ public class BookingController {
     private final BookingPetRepository bookingPets;
     private final com.techup.pet_sitter.repository.SitterProfileRepository profiles;
     private final BookingAdminService bookingAdminService;
+    private final OwnerBookingService ownerBookings;
+    private final BookingScheduleGuard scheduleGuard;
 
     @org.springframework.beans.factory.annotation.Value("${stripe.secret.key:}")
     private String stripeSecretKey;
@@ -53,7 +64,9 @@ public class BookingController {
                              SitterBookingService sitterBookings, PaymentRepository payments,
                              PetRepository pets, BookingPetRepository bookingPets,
                              com.techup.pet_sitter.repository.SitterProfileRepository profiles,
-                             BookingAdminService bookingAdminService) {
+                             BookingAdminService bookingAdminService,
+                             OwnerBookingService ownerBookings,
+                             BookingScheduleGuard scheduleGuard) {
         this.bookings = bookings;
         this.users = users;
         this.approvals = approvals;
@@ -63,50 +76,36 @@ public class BookingController {
         this.bookingPets = bookingPets;
         this.profiles = profiles;
         this.bookingAdminService = bookingAdminService;
+        this.ownerBookings = ownerBookings;
+        this.scheduleGuard = scheduleGuard;
     }
 
     @GetMapping("/sitter")
-    List<SitterBookingResponse> listForSitter(@RequestHeader("X-User-Id") UUID sitterId,
+    List<SitterBookingResponse> listForSitter(@AuthenticationPrincipal Jwt jwt,
                                               @RequestParam(required = false) String query,
                                               @RequestParam(required = false) LocalDate from,
                                               @RequestParam(required = false) LocalDate to) {
-        return sitterBookings.list(sitterId, query, from, to);
+        return sitterBookings.list(JwtUser.id(jwt), query, from, to);
     }
 
     @GetMapping("/sitter/{id}")
-    SitterBookingResponse getForSitter(@RequestHeader("X-User-Id") UUID sitterId, @PathVariable Long id) {
-        return sitterBookings.get(sitterId, id);
+    SitterBookingResponse getForSitter(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        return sitterBookings.get(JwtUser.id(jwt), id);
     }
 
     @PatchMapping("/sitter/{id}/status")
-    SitterBookingResponse changeStatus(@RequestHeader("X-User-Id") UUID sitterId, @PathVariable Long id,
+    SitterBookingResponse changeStatus(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id,
                                        @RequestBody BookingStatusRequest request) {
-        return sitterBookings.changeStatus(sitterId, id, request.status());
+        return sitterBookings.changeStatus(JwtUser.id(jwt), id, request.status());
     }
 
     @PostMapping
     @Transactional
     public BookingResponse create(
-            @org.springframework.security.core.annotation.AuthenticationPrincipal org.springframework.security.oauth2.jwt.Jwt jwt,
-            @RequestHeader(value = "X-User-Id", required = false) UUID headerUserId,
+            @AuthenticationPrincipal Jwt jwt,
             @RequestBody BookingRequest request
     ) {
-        UUID ownerId = jwt != null ? com.techup.pet_sitter.security.JwtUser.id(jwt) : headerUserId;
-        User owner = null;
-        if (ownerId != null) {
-            owner = users.findById(ownerId).orElse(null);
-        }
-        if (owner == null) {
-            owner = users.findAll().stream()
-                    .filter(u -> !Boolean.TRUE.equals(u.isBanned()))
-                    .findFirst()
-                    .orElse(null);
-        }
-        if (owner == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Owner authentication is required");
-        }
-
-        if (request.startDate() == null || request.endDate() == null
+        if (request.sitterId() == null || request.startDate() == null || request.endDate() == null
                 || request.startTime() == null || request.endTime() == null || request.duration() == null
                 || request.totalPrice() == null || request.contactName() == null || request.contactEmail() == null
                 || request.contactPhone() == null || !List.of("hours", "Day").contains(request.durationUnit())) {
@@ -116,23 +115,13 @@ public class BookingController {
                 || request.totalPrice().signum() < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Booking dates, duration or price are invalid");
         }
+        User owner = users.findById(JwtUser.id(jwt))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Owner not found"));
         OwnerProfileRules.requireNotBanned(owner);
 
-        com.techup.pet_sitter.entity.SitterProfile sitterProfile = null;
-        if (request.sitterId() != null) {
-            try {
-                sitterProfile = approvals.requireBookable(request.sitterId());
-            } catch (Exception ignored) {}
-        }
-        if (sitterProfile == null) {
-            sitterProfile = profiles.findAll().stream()
-                    .filter(com.techup.pet_sitter.entity.SitterProfile::isListed)
-                    .findFirst()
-                    .orElseGet(() -> profiles.findAll().stream().findFirst().orElse(null));
-        }
-        if (sitterProfile == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No available pet sitter found");
-        }
+        com.techup.pet_sitter.entity.SitterProfile sitterProfile = approvals.requireBookable(request.sitterId());
+        scheduleGuard.requireAvailable(sitterProfile, request.startDate(), request.endDate(),
+                request.startTime(), request.endTime(), null);
 
         Booking booking = new Booking();
         booking.setOwner(owner);
@@ -215,8 +204,36 @@ public class BookingController {
         return new BookingResponse(saved.getId(), saved.getStatus(), saved.getTransactionNo());
     }
 
+    @GetMapping("/owner")
+    public List<OwnerBookingResponse> listForOwner(@AuthenticationPrincipal Jwt jwt) {
+        return ownerBookings.list(JwtUser.id(jwt));
+    }
+
+    @GetMapping("/owner/{id}")
+    public OwnerBookingResponse getForOwner(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        return ownerBookings.get(JwtUser.id(jwt), id);
+    }
+
+    @PatchMapping("/owner/{id}/schedule")
+    public OwnerBookingResponse changeSchedule(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id,
+                                               @RequestBody OwnerScheduleRequest request) {
+        return ownerBookings.changeSchedule(JwtUser.id(jwt), id, request);
+    }
+
+    @PostMapping("/owner/{id}/review")
+    public OwnerBookingResponse review(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id,
+                                       @RequestBody OwnerReviewRequest request) {
+        return ownerBookings.review(JwtUser.id(jwt), id, request);
+    }
+
+    @PostMapping("/owner/{id}/report")
+    public OwnerBookingResponse report(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id,
+                                       @RequestBody OwnerReportRequest request) {
+        return ownerBookings.report(JwtUser.id(jwt), id, request);
+    }
+
     @GetMapping("/admin/sitter/{sitterId}")
-    List<BookingAdminListItem> listBySitter(@PathVariable UUID sitterId) {
+    public List<BookingAdminListItem> listBySitter(@PathVariable UUID sitterId) {
         return bookingAdminService.listForSitter(sitterId);
     }
 }

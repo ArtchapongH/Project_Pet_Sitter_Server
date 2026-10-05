@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
@@ -37,4 +38,11 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             "WHERE r.owner.id = :ownerId " +
             "ORDER BY r.createdAt DESC")
     List<OwnerReviewItem> findByOwnerId(@Param("ownerId") UUID ownerId);
+
+    Optional<Review> findByBooking_Id(Long bookingId);
+
+    List<Review> findBySitter_UserId(UUID sitterId);
+
+    @Query("SELECT review FROM Review review WHERE review.owner.id = :ownerId")
+    List<Review> findEntitiesByOwnerId(@Param("ownerId") UUID ownerId);
 }

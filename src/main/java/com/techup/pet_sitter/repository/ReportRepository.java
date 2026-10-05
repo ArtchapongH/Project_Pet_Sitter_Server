@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ReportRepository extends JpaRepository<Report, Long> {
+    boolean existsByBooking_Id(Long bookingId);
 
     // User = the booking's sitter (sitter_profiles.user_id = users.id), Reported Person = the booking's owner
     @Query("SELECT new com.techup.pet_sitter.dto.ReportAdminListItem(" +
