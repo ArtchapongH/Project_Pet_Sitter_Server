@@ -6,22 +6,27 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Arrays;
+import java.util.stream.Stream;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+    private static final String PRODUCTION_FRONTEND = "https://pet-sitter-client-one.vercel.app";
 
     @Value("${app.cors.allowed-origin-patterns}")
     private String allowedOriginPatterns;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        String[] origins = Arrays.stream(allowedOriginPatterns.split(","))
+        String[] origins = Stream.concat(
+                        Stream.of(PRODUCTION_FRONTEND),
+                        Arrays.stream(allowedOriginPatterns.split(","))
+                )
                 .map(String::trim)
                 .filter(origin -> !origin.isEmpty())
+                .distinct()
                 .toArray(String[]::new);
-        // An empty value disables cross-origin access; same-origin /api proxy requests still work.
-        if (origins.length == 0) return;
-
+        // Vercel forwards browser headers through its external rewrite, so the production
+        // frontend origin must still be allowed by Spring even though the browser calls /api.
         registry.addMapping("/api/**")
                 .allowedOriginPatterns(origins)
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")

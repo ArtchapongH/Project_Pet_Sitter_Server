@@ -22,6 +22,7 @@ import com.techup.pet_sitter.service.OwnerProfileRules;
 import com.techup.pet_sitter.service.BookingAdminService;
 import com.techup.pet_sitter.service.SitterApprovalService;
 import com.techup.pet_sitter.service.SitterBookingService;
+import com.techup.pet_sitter.service.NotificationService;
 import com.techup.pet_sitter.security.JwtUser;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -56,6 +57,7 @@ public class BookingController {
     private final BookingAdminService bookingAdminService;
     private final OwnerBookingService ownerBookings;
     private final BookingScheduleGuard scheduleGuard;
+    private final NotificationService notifications;
 
     @org.springframework.beans.factory.annotation.Value("${stripe.secret.key:}")
     private String stripeSecretKey;
@@ -66,7 +68,8 @@ public class BookingController {
                              com.techup.pet_sitter.repository.SitterProfileRepository profiles,
                              BookingAdminService bookingAdminService,
                              OwnerBookingService ownerBookings,
-                             BookingScheduleGuard scheduleGuard) {
+                             BookingScheduleGuard scheduleGuard,
+                             NotificationService notifications) {
         this.bookings = bookings;
         this.users = users;
         this.approvals = approvals;
@@ -78,6 +81,7 @@ public class BookingController {
         this.bookingAdminService = bookingAdminService;
         this.ownerBookings = ownerBookings;
         this.scheduleGuard = scheduleGuard;
+        this.notifications = notifications;
     }
 
     @GetMapping("/sitter")
@@ -143,6 +147,7 @@ public class BookingController {
         String txnNo = String.valueOf((long) (Math.random() * 900000L + 100000L));
         booking.setTransactionNo(txnNo);
         Booking saved = bookings.save(booking);
+        notifications.notify(sitterProfile.getUser(), "booking", owner.getName() + " created a new booking");
 
         // Link pets to BookingPet
         if (request.petIds() != null && !request.petIds().isEmpty()) {
