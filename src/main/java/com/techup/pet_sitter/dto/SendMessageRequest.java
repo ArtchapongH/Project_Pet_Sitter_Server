@@ -1,4 +1,9 @@
 package com.techup.pet_sitter.dto;
 
-public record SendMessageRequest(String content, String imageUrl) {
+import jakarta.validation.constraints.Size;
+
+public record SendMessageRequest(
+        @Size(max = 4000) String content,
+        String imageUrl
+) {
 }

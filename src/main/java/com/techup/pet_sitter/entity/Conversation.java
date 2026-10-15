@@ -8,12 +8,17 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "conversations")
+@Table(
+        name = "conversations",
+        uniqueConstraints = @UniqueConstraint(name = "uk_conversations_owner_sitter", columnNames = {"owner_id", "sitter_id"})
+)
 public class Conversation {
 
     @Id
@@ -32,6 +37,13 @@ public class Conversation {
     private OffsetDateTime createdAt;
 
     public Conversation() {
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = OffsetDateTime.now();
+        }
     }
 
     public Long getId() {

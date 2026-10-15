@@ -122,6 +122,7 @@ public class MessageService {
 
     private MessageResponse response(Message message, UUID userId) {
         return new MessageResponse(message.getId(), message.getConversation().getId(), message.getSender().getId(),
-                message.getContent(), message.getImageUrl(), message.getSentAt(), message.getSender().getId().equals(userId));
+                message.getContent(), message.getImageUrl(), message.getSentAt(), message.getReadAt(),
+                message.getSender().getId().equals(userId));
     }
 }
